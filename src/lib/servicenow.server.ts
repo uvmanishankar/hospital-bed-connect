@@ -64,27 +64,30 @@ async function snFetch<T = unknown>(
   throw lastErr instanceof Error ? lastErr : new Error("ServiceNow request failed");
 }
 
+type SNRow = Record<string, unknown>;
+
 export async function snGetBeds(cfg: SNConfig) {
-  return snFetch<{ result: unknown[] }>(cfg, "u_hospital_bed", { query: { sysparm_limit: "200" } });
+  return snFetch<{ result: SNRow[] }>(cfg, "u_hospital_bed", { query: { sysparm_limit: "200" } });
 }
 export async function snCreateBed(cfg: SNConfig, body: Record<string, unknown>) {
-  return snFetch(cfg, "u_hospital_bed", { method: "POST", body });
+  return snFetch<{ result: SNRow }>(cfg, "u_hospital_bed", { method: "POST", body });
 }
 export async function snUpdateBed(cfg: SNConfig, id: string, body: Record<string, unknown>) {
-  return snFetch(cfg, "u_hospital_bed", { method: "PATCH", id, body });
+  return snFetch<{ result: SNRow }>(cfg, "u_hospital_bed", { method: "PATCH", id, body });
 }
 export async function snGetAssets(cfg: SNConfig) {
-  return snFetch<{ result: unknown[] }>(cfg, "u_hospital_asset", { query: { sysparm_limit: "200" } });
+  return snFetch<{ result: SNRow[] }>(cfg, "u_hospital_asset", { query: { sysparm_limit: "200" } });
 }
 export async function snCreateAsset(cfg: SNConfig, body: Record<string, unknown>) {
-  return snFetch(cfg, "u_hospital_asset", { method: "POST", body });
+  return snFetch<{ result: SNRow }>(cfg, "u_hospital_asset", { method: "POST", body });
 }
 export async function snCreateAdmission(cfg: SNConfig, body: Record<string, unknown>) {
-  return snFetch(cfg, "u_bed_request", { method: "POST", body });
+  return snFetch<{ result: SNRow }>(cfg, "u_bed_request", { method: "POST", body });
 }
 export async function snGetAdmissions(cfg: SNConfig) {
-  return snFetch<{ result: unknown[] }>(cfg, "u_bed_request", { query: { sysparm_limit: "100" } });
+  return snFetch<{ result: SNRow[] }>(cfg, "u_bed_request", { query: { sysparm_limit: "100" } });
 }
 export async function snGetStaffAvailability(cfg: SNConfig) {
-  return snFetch<{ result: unknown[] }>(cfg, "u_staff_availability", { query: { sysparm_limit: "100" } });
+  return snFetch<{ result: SNRow[] }>(cfg, "u_staff_availability", { query: { sysparm_limit: "100" } });
 }
+
