@@ -64,7 +64,7 @@ async function snFetch<T = unknown>(
   throw lastErr instanceof Error ? lastErr : new Error("ServiceNow request failed");
 }
 
-type SNRow = Record<string, unknown>;
+export type SNRow = Record<string, string>;
 
 export async function snGetBeds(cfg: SNConfig) {
   return snFetch<{ result: SNRow[] }>(cfg, "u_hospital_bed", { query: { sysparm_limit: "200" } });
