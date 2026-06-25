@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   Box, CheckCircle2, Activity, Wrench, AlertCircle, Filter, Plus, Search, MoreVertical,
   Stethoscope, MonitorSmartphone, Accessibility, Droplets, Wind, TrendingUp, Clock, Calendar,
@@ -37,6 +38,7 @@ function AssetsPage() {
   const assets: Asset[] = useMemo(() => (data.source === "mock" ? data.assets : mockAssets), [data]);
   const [tab, setTab] = useState<Tab>("All Assets");
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
   const visible = useMemo(() => {
     const status = tabToStatus[tab];
@@ -60,10 +62,10 @@ function AssetsPage() {
       breadcrumb={["Home", "Assets & Equipment"]}
       actions={
         <>
-          <button className="inline-flex h-10 px-4 items-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold hover:bg-muted">
+          <button onClick={() => toast.info("Filters panel coming soon")} className="inline-flex h-10 px-4 items-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold hover:bg-muted">
             <Filter size={16} /> Filters
           </button>
-          <button className="inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-[var(--shadow-glow)]">
+          <button onClick={() => toast.success("New asset request submitted")} className="inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-[var(--shadow-glow)] hover:opacity-90">
             <Plus size={16} /> Request New Asset
           </button>
         </>
@@ -149,7 +151,7 @@ function AssetsPage() {
                       ) : "—"}
                     </td>
                     <td className="py-3 px-2 text-xs text-muted-foreground whitespace-nowrap">{a.lastUpdated}</td>
-                    <td className="py-3 px-2"><button className="p-1 hover:bg-muted rounded-md"><MoreVertical size={16} /></button></td>
+                    <td className="py-3 px-2"><button onClick={() => toast(`Actions for ${a.tag}`, { description: a.name })} className="p-1 hover:bg-muted rounded-md"><MoreVertical size={16} /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -158,11 +160,11 @@ function AssetsPage() {
           <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
             <div>Showing 1 to {visible.length} of {assets.length} assets</div>
             <div className="flex items-center gap-1">
-              <button className="h-7 w-7 rounded-md border border-border">‹</button>
-              <button className="h-7 w-7 rounded-md bg-primary text-white">1</button>
-              <button className="h-7 w-7 rounded-md border border-border">2</button>
-              <button className="h-7 w-7 rounded-md border border-border">3</button>
-              <button className="h-7 w-7 rounded-md border border-border">›</button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} className="h-7 w-7 rounded-md border border-border hover:bg-muted">‹</button>
+              {[1, 2, 3].map(n => (
+                <button key={n} onClick={() => setPage(n)} className={`h-7 w-7 rounded-md border ${page === n ? "bg-primary text-white border-primary" : "border-border hover:bg-muted"}`}>{n}</button>
+              ))}
+              <button onClick={() => setPage(p => Math.min(3, p + 1))} className="h-7 w-7 rounded-md border border-border hover:bg-muted">›</button>
             </div>
           </div>
         </div>
@@ -201,7 +203,7 @@ function AssetsPage() {
           <div className="bg-card border border-border rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-secondary">Recent Asset Requests</h3>
-              <a href="#" className="text-xs text-primary font-semibold">View All</a>
+              <button onClick={() => toast.info("Opening all asset requests")} className="text-xs text-primary font-semibold hover:underline">View All</button>
             </div>
             <div className="mt-3 space-y-2.5">
               {data.requests.map((r) => (
