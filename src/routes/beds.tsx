@@ -140,7 +140,7 @@ function BedsPage() {
                       <td className="py-2.5 px-2">{b.patient ?? "—"}</td>
                       <td className="py-2.5 px-2">{b.diagnosis ?? "—"}</td>
                       <td className="py-2.5 px-2">{b.doctor ?? "—"}</td>
-                      <td className="py-2.5 px-2"><button className="text-primary text-xs font-semibold">View</button></td>
+                      <td className="py-2.5 px-2"><button className="cursor-pointer text-primary text-xs font-semibold hover:underline">View</button></td>
                     </tr>
                   ))}
                 </tbody>
