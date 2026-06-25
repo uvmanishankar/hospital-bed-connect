@@ -38,10 +38,15 @@ function BedsPage() {
   const rawBeds: Bed[] = useMemo(() => (data.source === "mock" ? data.beds : mockBeds), [data]);
   const [tab, setTab] = useState<"ward" | "list">("ward");
   const [ward, setWard] = useState("ICU");
+  const [allocations, setAllocations] = useState<Record<string, { patient: string; type: PatientType }>>({});
+  const beds: Bed[] = useMemo(() => rawBeds.map(b => {
+    const a = allocations[b.id];
+    if (!a || b.status !== "available") return b;
+    return { ...b, status: "occupied" as BedStatus, patient: a.patient, patientId: `PT-NEW-${b.id}`, diagnosis: PATIENT_TYPES.find(p => p.value === a.type)?.label, admittedOn: "Today" };
+  }), [rawBeds, allocations]);
   const [selected, setSelected] = useState<Bed | null>(beds.find(b => b.status === "occupied") ?? beds[0]);
   const [allocateOpen, setAllocateOpen] = useState(false);
   const [allocateTarget, setAllocateTarget] = useState<Bed | null>(null);
-  const [allocations, setAllocations] = useState<Record<string, { patient: string; type: PatientType }>>({});
 
   const openAllocate = (bed: Bed | null) => { setAllocateTarget(bed); setAllocateOpen(true); };
   const handleAllocate = (bedId: string, patient: string, type: PatientType) => {
