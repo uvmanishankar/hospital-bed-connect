@@ -209,7 +209,7 @@ function BedDetails({ bed, onClose }: { bed: Bed | null; onClose: () => void }) 
     <div className="bg-card border border-border rounded-2xl p-5 self-start sticky top-24">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-secondary">Bed Details</h3>
-        <button onClick={onClose} className="p-1 hover:bg-muted rounded-md"><X size={16} /></button>
+        <button onClick={onClose} className="cursor-pointer p-1 hover:bg-muted rounded-md"><X size={16} /></button>
       </div>
       <div className="mt-4 flex items-center justify-between">
         <div className="font-bold text-secondary">{bed.ward} - Bed {bed.number}</div>
