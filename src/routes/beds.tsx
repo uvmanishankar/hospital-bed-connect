@@ -385,15 +385,23 @@ function BedDetails({ bed, onClose, onAllocate }: { bed: Bed | null; onClose: ()
       <div className="mt-5">
         <div className="text-xs font-semibold text-secondary mb-2">Actions</div>
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => toast.success(`Transfer initiated for ${bed.ward}-${bed.number}`)} className="cursor-pointer h-10 rounded-lg bg-primary text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:opacity-90 transition">
-            <ArrowRightLeft size={14} /> Transfer Bed
-          </button>
-          <button onClick={() => toast.success(`${bed.patient ?? "Patient"} marked for discharge`)} className="cursor-pointer h-10 rounded-lg bg-warning/15 text-amber-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-warning/25 transition">
-            <UserMinus size={14} /> Discharge
-          </button>
-          <button onClick={() => toast.success(`Bed ${bed.ward}-${bed.number} sent for cleaning`)} className="cursor-pointer h-10 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold inline-flex items-center justify-center gap-1.5 col-span-2 hover:bg-destructive/20 transition">
-            <Sparkles size={14} /> Mark for Cleaning
-          </button>
+          {bed.status === "available" ? (
+            <button onClick={() => onAllocate(bed)} className="cursor-pointer h-10 rounded-lg bg-primary text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 col-span-2 hover:opacity-90 transition">
+              <UserPlus size={14} /> Allocate to Patient
+            </button>
+          ) : (
+            <>
+              <button onClick={() => toast.success(`Transfer initiated for ${bed.ward}-${bed.number}`)} className="cursor-pointer h-10 rounded-lg bg-primary text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:opacity-90 transition">
+                <ArrowRightLeft size={14} /> Transfer Bed
+              </button>
+              <button onClick={() => toast.success(`${bed.patient ?? "Patient"} marked for discharge`)} className="cursor-pointer h-10 rounded-lg bg-warning/15 text-amber-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-warning/25 transition">
+                <UserMinus size={14} /> Discharge
+              </button>
+              <button onClick={() => toast.success(`Bed ${bed.ward}-${bed.number} sent for cleaning`)} className="cursor-pointer h-10 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold inline-flex items-center justify-center gap-1.5 col-span-2 hover:bg-destructive/20 transition">
+                <Sparkles size={14} /> Mark for Cleaning
+              </button>
+            </>
+          )}
         </div>
       </div>
       <div className="mt-5">
