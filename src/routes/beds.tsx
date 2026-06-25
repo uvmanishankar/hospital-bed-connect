@@ -39,6 +39,16 @@ function BedsPage() {
   const [tab, setTab] = useState<"ward" | "list">("ward");
   const [ward, setWard] = useState("ICU");
   const [selected, setSelected] = useState<Bed | null>(beds.find(b => b.status === "occupied") ?? beds[0]);
+  const [allocateOpen, setAllocateOpen] = useState(false);
+  const [allocateTarget, setAllocateTarget] = useState<Bed | null>(null);
+  const [allocations, setAllocations] = useState<Record<string, { patient: string; type: PatientType }>>({});
+
+  const openAllocate = (bed: Bed | null) => { setAllocateTarget(bed); setAllocateOpen(true); };
+  const handleAllocate = (bedId: string, patient: string, type: PatientType) => {
+    setAllocations(a => ({ ...a, [bedId]: { patient, type } }));
+    setAllocateOpen(false);
+    toast.success(`${patient} allocated to ${bedId}`);
+  };
 
   const wards = Array.from(new Set(beds.map(b => b.ward.split("-")[0])));
   const visibleGroups = useMemo(() => {
