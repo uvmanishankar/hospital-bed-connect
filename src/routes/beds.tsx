@@ -80,7 +80,7 @@ function BedsPage() {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`pb-3 text-sm font-semibold capitalize ${tab === t ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+                  className={`cursor-pointer pb-3 text-sm font-semibold capitalize ${tab === t ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {t === "ward" ? "Ward View" : "List View"}
                 </button>
