@@ -3,12 +3,23 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import {
   Bed as BedIcon, Filter, Plus, X, Wrench, Lock, CheckCircle2, Users,
-  ArrowRightLeft, UserMinus, Sparkles, AlertTriangle,
+  ArrowRightLeft, UserMinus, Sparkles, AlertTriangle, UserPlus, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, StatCard } from "@/components/AppShell";
 import { getBeds } from "@/lib/servicenow.functions";
 import { mockBeds, type Bed, type BedStatus } from "@/lib/mock-data";
+
+// Patient → required bed type mapping. Drives allocation matching.
+type PatientType = "critical" | "general" | "pediatric" | "maternity" | "infectious" | "post_op";
+const PATIENT_TYPES: { value: PatientType; label: string; requires: string; description: string }[] = [
+  { value: "critical",   label: "Critical Care",      requires: "ICU",        description: "Needs ICU bed with ventilator support" },
+  { value: "post_op",    label: "Post-Operative",     requires: "ICU",        description: "Needs ICU / HDU monitoring bed" },
+  { value: "general",    label: "General / Ward",     requires: "General",    description: "Standard ward bed" },
+  { value: "pediatric",  label: "Pediatric",          requires: "Pediatric",  description: "Child-sized bed in pediatrics ward" },
+  { value: "maternity",  label: "Maternity",          requires: "Maternity",  description: "Maternity / labour bed" },
+  { value: "infectious", label: "Infectious / Isolation", requires: "Isolation", description: "Isolation room with negative pressure" },
+];
 
 const bedsOpts = queryOptions({
   queryKey: ["beds"],
@@ -24,12 +35,27 @@ export const Route = createFileRoute("/beds")({
 function BedsPage() {
   const { data } = useSuspenseQuery(bedsOpts);
   // Always use shaped mock for UI; SN data integration shows count badge.
-  const beds: Bed[] = useMemo(() => (data.source === "mock" ? data.beds : mockBeds), [data]);
+  const rawBeds: Bed[] = useMemo(() => (data.source === "mock" ? data.beds : mockBeds), [data]);
   const [tab, setTab] = useState<"ward" | "list">("ward");
   const [ward, setWard] = useState("ICU");
+  const [allocations, setAllocations] = useState<Record<string, { patient: string; type: PatientType }>>({});
+  const beds: Bed[] = useMemo(() => rawBeds.map(b => {
+    const a = allocations[b.id];
+    if (!a || b.status !== "available") return b;
+    return { ...b, status: "occupied" as BedStatus, patient: a.patient, patientId: `PT-NEW-${b.id}`, diagnosis: PATIENT_TYPES.find(p => p.value === a.type)?.label, admittedOn: "Today" };
+  }), [rawBeds, allocations]);
   const [selected, setSelected] = useState<Bed | null>(beds.find(b => b.status === "occupied") ?? beds[0]);
+  const [allocateOpen, setAllocateOpen] = useState(false);
+  const [allocateTarget, setAllocateTarget] = useState<Bed | null>(null);
 
-  const wards = Array.from(new Set(beds.map(b => b.ward.split("-")[0])));
+  const openAllocate = (bed: Bed | null) => { setAllocateTarget(bed); setAllocateOpen(true); };
+  const handleAllocate = (bedId: string, patient: string, type: PatientType) => {
+    setAllocations(a => ({ ...a, [bedId]: { patient, type } }));
+    setAllocateOpen(false);
+    toast.success(`${patient} allocated to ${bedId}`);
+  };
+
+  const wards: string[] = Array.from(new Set(beds.map(b => b.ward.split("-")[0])));
   const visibleGroups = useMemo(() => {
     const filtered = beds.filter(b => b.ward.startsWith(ward));
     const groups = new Map<string, Bed[]>();
@@ -57,8 +83,8 @@ function BedsPage() {
           <button onClick={() => toast.info("Filters coming soon")} className="cursor-pointer inline-flex h-10 px-4 items-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold hover:bg-muted">
             <Filter size={16} /> Filters
           </button>
-          <button onClick={() => toast.success("New bed added")} className="cursor-pointer inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-[var(--shadow-glow)] hover:opacity-90">
-            <Plus size={16} /> Add Bed
+          <button onClick={() => openAllocate(null)} className="cursor-pointer inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-[var(--shadow-glow)] hover:opacity-90">
+            <UserPlus size={16} /> Allocate Bed
           </button>
         </>
       }
@@ -150,9 +176,142 @@ function BedsPage() {
         </div>
 
         {/* Bed details */}
-        <BedDetails bed={selected} onClose={() => setSelected(null)} />
+        <BedDetails bed={selected} onClose={() => setSelected(null)} onAllocate={openAllocate} />
       </div>
+
+      {allocateOpen && (
+        <AllocateDialog
+          beds={beds}
+          target={allocateTarget}
+          onClose={() => setAllocateOpen(false)}
+          onConfirm={handleAllocate}
+        />
+      )}
     </AppShell>
+  );
+}
+
+function AllocateDialog({ beds, target, onClose, onConfirm }: {
+  beds: Bed[];
+  target: Bed | null;
+  onClose: () => void;
+  onConfirm: (bedId: string, patient: string, type: PatientType) => void;
+}) {
+  const [patient, setPatient] = useState("");
+  const [type, setType] = useState<PatientType>(target?.bedType === "ICU" ? "critical" : target?.bedType === "Pediatric" ? "pediatric" : target?.bedType === "Maternity" ? "maternity" : target?.bedType === "Isolation" ? "infectious" : "general");
+  const [bedId, setBedId] = useState<string>(target?.id ?? "");
+
+  const requirement = PATIENT_TYPES.find(p => p.value === type)!;
+  const availableForType = useMemo(
+    () => beds.filter(b => b.status === "available" && b.bedType === requirement.requires),
+    [beds, requirement],
+  );
+  const targetBed = beds.find(b => b.id === bedId) ?? null;
+  const targetMismatch = targetBed && targetBed.bedType !== requirement.requires;
+  const targetUnavailable = targetBed && targetBed.status !== "available";
+
+  const canSubmit = patient.trim().length > 0 && targetBed && !targetMismatch && !targetUnavailable;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-secondary/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card w-full max-w-2xl rounded-2xl border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <h3 className="font-semibold text-secondary text-lg">Allocate Bed to Patient</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Patient type determines which bed types are eligible.</p>
+          </div>
+          <button onClick={onClose} className="cursor-pointer p-1.5 hover:bg-muted rounded-md"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+          <div>
+            <label className="text-xs font-semibold text-secondary">Patient Name</label>
+            <input
+              value={patient}
+              onChange={(e) => setPatient(e.target.value)}
+              placeholder="e.g. Riya Sharma"
+              className="mt-1 w-full h-10 px-3 rounded-lg border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-secondary">Patient Type</label>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {PATIENT_TYPES.map((p) => {
+                const active = type === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    onClick={() => setType(p.value)}
+                    className={`cursor-pointer text-left rounded-xl border-2 px-3 py-2.5 transition ${active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 bg-white"}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-secondary">{p.label}</div>
+                      {active && <Check size={14} className="text-primary" />}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{p.description}</div>
+                    <div className="text-[10px] text-primary font-bold mt-1 uppercase tracking-wider">Requires: {p.requires}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-secondary">Select Bed</label>
+              <span className="text-[11px] text-muted-foreground">{availableForType.length} compatible bed{availableForType.length === 1 ? "" : "s"} available</span>
+            </div>
+            <select
+              value={bedId}
+              onChange={(e) => setBedId(e.target.value)}
+              className="mt-1 w-full h-10 px-3 rounded-lg border border-border bg-white text-sm"
+            >
+              <option value="">— Choose a bed —</option>
+              {availableForType.map(b => (
+                <option key={b.id} value={b.id}>{b.id} · {b.bedType} · ₹{b.ratePerDay}/day</option>
+              ))}
+              {targetBed && !availableForType.find(b => b.id === targetBed.id) && (
+                <option value={targetBed.id}>{targetBed.id} · {targetBed.bedType} · {targetBed.status}</option>
+              )}
+            </select>
+
+            {targetMismatch && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning/10 border border-warning/40 px-3 py-2 text-xs text-amber-700">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  <strong>{targetBed?.id}</strong> is a <strong>{targetBed?.bedType}</strong> bed but a{" "}
+                  <strong>{requirement.label}</strong> patient requires a <strong>{requirement.requires}</strong> bed. Pick a compatible bed above.
+                </span>
+              </div>
+            )}
+            {targetUnavailable && !targetMismatch && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span><strong>{targetBed?.id}</strong> is currently {targetBed?.status} and cannot be allocated.</span>
+              </div>
+            )}
+            {!targetBed && availableForType.length === 0 && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>No available <strong>{requirement.requires}</strong> beds. Try a different patient type or free up a bed.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 p-5 border-t border-border">
+          <button onClick={onClose} className="cursor-pointer h-10 px-4 rounded-lg border border-border bg-white text-sm font-semibold hover:bg-muted">Cancel</button>
+          <button
+            disabled={!canSubmit}
+            onClick={() => canSubmit && onConfirm(bedId, patient.trim(), type)}
+            className="cursor-pointer h-10 px-5 rounded-lg bg-primary text-white text-sm font-semibold inline-flex items-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <UserPlus size={14} /> Allocate
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -188,7 +347,7 @@ function BedStatusBadge({ status }: { status: BedStatus }) {
   return <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${map[status]}`}>{status}</span>;
 }
 
-function BedDetails({ bed, onClose }: { bed: Bed | null; onClose: () => void }) {
+function BedDetails({ bed, onClose, onAllocate }: { bed: Bed | null; onClose: () => void; onAllocate: (bed: Bed | null) => void }) {
   if (!bed) return (
     <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">
       Select a bed to view details
@@ -226,15 +385,23 @@ function BedDetails({ bed, onClose }: { bed: Bed | null; onClose: () => void }) 
       <div className="mt-5">
         <div className="text-xs font-semibold text-secondary mb-2">Actions</div>
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => toast.success(`Transfer initiated for ${bed.ward}-${bed.number}`)} className="cursor-pointer h-10 rounded-lg bg-primary text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:opacity-90 transition">
-            <ArrowRightLeft size={14} /> Transfer Bed
-          </button>
-          <button onClick={() => toast.success(`${bed.patient ?? "Patient"} marked for discharge`)} className="cursor-pointer h-10 rounded-lg bg-warning/15 text-amber-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-warning/25 transition">
-            <UserMinus size={14} /> Discharge
-          </button>
-          <button onClick={() => toast.success(`Bed ${bed.ward}-${bed.number} sent for cleaning`)} className="cursor-pointer h-10 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold inline-flex items-center justify-center gap-1.5 col-span-2 hover:bg-destructive/20 transition">
-            <Sparkles size={14} /> Mark for Cleaning
-          </button>
+          {bed.status === "available" ? (
+            <button onClick={() => onAllocate(bed)} className="cursor-pointer h-10 rounded-lg bg-primary text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 col-span-2 hover:opacity-90 transition">
+              <UserPlus size={14} /> Allocate to Patient
+            </button>
+          ) : (
+            <>
+              <button onClick={() => toast.success(`Transfer initiated for ${bed.ward}-${bed.number}`)} className="cursor-pointer h-10 rounded-lg bg-primary text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:opacity-90 transition">
+                <ArrowRightLeft size={14} /> Transfer Bed
+              </button>
+              <button onClick={() => toast.success(`${bed.patient ?? "Patient"} marked for discharge`)} className="cursor-pointer h-10 rounded-lg bg-warning/15 text-amber-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-warning/25 transition">
+                <UserMinus size={14} /> Discharge
+              </button>
+              <button onClick={() => toast.success(`Bed ${bed.ward}-${bed.number} sent for cleaning`)} className="cursor-pointer h-10 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold inline-flex items-center justify-center gap-1.5 col-span-2 hover:bg-destructive/20 transition">
+                <Sparkles size={14} /> Mark for Cleaning
+              </button>
+            </>
+          )}
         </div>
       </div>
       <div className="mt-5">
