@@ -62,10 +62,10 @@ function AssetsPage() {
       breadcrumb={["Home", "Assets & Equipment"]}
       actions={
         <>
-          <button className="inline-flex h-10 px-4 items-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold hover:bg-muted">
+          <button onClick={() => toast.info("Filters panel coming soon")} className="inline-flex h-10 px-4 items-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold hover:bg-muted">
             <Filter size={16} /> Filters
           </button>
-          <button className="inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-[var(--shadow-glow)]">
+          <button onClick={() => toast.success("New asset request submitted")} className="inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-[var(--shadow-glow)] hover:opacity-90">
             <Plus size={16} /> Request New Asset
           </button>
         </>
