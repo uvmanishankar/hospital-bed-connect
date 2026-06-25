@@ -168,7 +168,7 @@ function BedTile({ bed, selected, onSelect }: { bed: Bed; selected: boolean; onS
   return (
     <button
       onClick={onSelect}
-      className={`relative text-left rounded-xl border-2 ${s.border} ${s.bg} px-3 py-3 transition hover:shadow-md ${selected ? "ring-2 ring-primary ring-offset-2" : ""}`}
+      className={`cursor-pointer relative text-left rounded-xl border-2 ${s.border} ${s.bg} px-3 py-3 transition hover:shadow-md ${selected ? "ring-2 ring-primary ring-offset-2" : ""}`}
     >
       <Icon size={18} className={`${s.iconC} mb-2`} />
       <div className={`text-xs font-bold ${s.text}`}>{bed.ward}</div>
