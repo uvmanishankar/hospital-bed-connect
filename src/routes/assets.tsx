@@ -203,7 +203,7 @@ function AssetsPage() {
           <div className="bg-card border border-border rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-secondary">Recent Asset Requests</h3>
-              <a href="#" className="text-xs text-primary font-semibold">View All</a>
+              <button onClick={() => toast.info("Opening all asset requests")} className="text-xs text-primary font-semibold hover:underline">View All</button>
             </div>
             <div className="mt-3 space-y-2.5">
               {data.requests.map((r) => (
