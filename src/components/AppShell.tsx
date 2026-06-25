@@ -107,7 +107,7 @@ export function AppShell({ children, title, breadcrumb, actions }: {
             <button className="lg:hidden p-2 -ml-2" onClick={() => setOpen(true)} aria-label="Open menu">
               <Menu size={20} />
             </button>
-            <button className="hidden lg:inline-flex p-2 rounded-lg hover:bg-muted">
+            <button className="hidden lg:inline-flex p-2 rounded-lg hover:bg-muted" onClick={() => setOpen(o => !o)} aria-label="Toggle menu">
               <Menu size={18} />
             </button>
             <div className="flex-1 max-w-2xl">
@@ -119,11 +119,11 @@ export function AppShell({ children, title, breadcrumb, actions }: {
                 />
               </div>
             </div>
-            <button className="relative p-2 rounded-lg hover:bg-muted">
+            <button onClick={() => navigate({ to: "/notifications" })} className="relative p-2 rounded-lg hover:bg-muted" aria-label="Notifications">
               <Bell size={18} />
               <span className="absolute top-1 right-1 h-4 w-4 grid place-items-center rounded-full bg-destructive text-white text-[9px] font-bold">5</span>
             </button>
-            <button className="p-2 rounded-lg hover:bg-muted hidden sm:inline-flex">
+            <button onClick={() => window.open("https://docs.lovable.dev", "_blank")} className="p-2 rounded-lg hover:bg-muted hidden sm:inline-flex" aria-label="Help">
               <HelpCircle size={18} />
             </button>
             <div className="flex items-center gap-2.5 pl-2 sm:pl-3 sm:border-l border-border">
