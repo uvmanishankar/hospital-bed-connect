@@ -35,7 +35,7 @@ export const Route = createFileRoute("/beds")({
 function BedsPage() {
   const { data } = useSuspenseQuery(bedsOpts);
   // Always use shaped mock for UI; SN data integration shows count badge.
-  const beds: Bed[] = useMemo(() => (data.source === "mock" ? data.beds : mockBeds), [data]);
+  const rawBeds: Bed[] = useMemo(() => (data.source === "mock" ? data.beds : mockBeds), [data]);
   const [tab, setTab] = useState<"ward" | "list">("ward");
   const [ward, setWard] = useState("ICU");
   const [selected, setSelected] = useState<Bed | null>(beds.find(b => b.status === "occupied") ?? beds[0]);
