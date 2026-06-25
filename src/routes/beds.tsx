@@ -3,12 +3,23 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import {
   Bed as BedIcon, Filter, Plus, X, Wrench, Lock, CheckCircle2, Users,
-  ArrowRightLeft, UserMinus, Sparkles, AlertTriangle,
+  ArrowRightLeft, UserMinus, Sparkles, AlertTriangle, UserPlus, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, StatCard } from "@/components/AppShell";
 import { getBeds } from "@/lib/servicenow.functions";
 import { mockBeds, type Bed, type BedStatus } from "@/lib/mock-data";
+
+// Patient → required bed type mapping. Drives allocation matching.
+type PatientType = "critical" | "general" | "pediatric" | "maternity" | "infectious" | "post_op";
+const PATIENT_TYPES: { value: PatientType; label: string; requires: string; description: string }[] = [
+  { value: "critical",   label: "Critical Care",      requires: "ICU",        description: "Needs ICU bed with ventilator support" },
+  { value: "post_op",    label: "Post-Operative",     requires: "ICU",        description: "Needs ICU / HDU monitoring bed" },
+  { value: "general",    label: "General / Ward",     requires: "General",    description: "Standard ward bed" },
+  { value: "pediatric",  label: "Pediatric",          requires: "Pediatric",  description: "Child-sized bed in pediatrics ward" },
+  { value: "maternity",  label: "Maternity",          requires: "Maternity",  description: "Maternity / labour bed" },
+  { value: "infectious", label: "Infectious / Isolation", requires: "Isolation", description: "Isolation room with negative pressure" },
+];
 
 const bedsOpts = queryOptions({
   queryKey: ["beds"],
