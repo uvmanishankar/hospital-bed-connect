@@ -38,6 +38,7 @@ function AssetsPage() {
   const assets: Asset[] = useMemo(() => (data.source === "mock" ? data.assets : mockAssets), [data]);
   const [tab, setTab] = useState<Tab>("All Assets");
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
   const visible = useMemo(() => {
     const status = tabToStatus[tab];
