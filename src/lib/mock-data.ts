@@ -63,7 +63,7 @@ export interface Bed {
   ratePerDay?: number;
 }
 
-function makeWard(prefix: string, count: number, occupied: Record<number, { name: string; id: string; diag: string }>, maint: number[] = [], blocked: number[] = []): Bed[] {
+function makeWard(prefix: string, count: number, occupied: Record<number, { name: string; id: string; diag: string }>, maint: number[] = [], blocked: number[] = [], bedType = "General", ratePerDay = 3500): Bed[] {
   return Array.from({ length: count }, (_, i) => {
     const n = i + 1;
     const num = String(n).padStart(2, "0");
@@ -86,8 +86,8 @@ function makeWard(prefix: string, count: number, occupied: Record<number, { name
       diagnosis: o?.diag,
       doctor: o ? "Dr. Amit Verma" : undefined,
       expectedDischarge: o ? "28 May 2025" : undefined,
-      bedType: prefix.startsWith("ICU") ? "ICU" : "General",
-      ratePerDay: prefix.startsWith("ICU") ? 8000 : 3500,
+      bedType,
+      ratePerDay,
     };
   });
 }
@@ -96,14 +96,24 @@ export const mockBeds: Bed[] = [
   ...makeWard("ICU-1", 10, {
     2: { name: "Ravi Kumar", id: "PT-000245", diag: "Severe Pneumonia" },
     6: { name: "Anjali Verma", id: "PT-000246", diag: "Post-op recovery" },
-  }, [5], [10]),
+  }, [5], [10], "ICU", 8000),
   ...makeWard("ICU-2", 10, {
     2: { name: "Suresh Babu", id: "PT-000247", diag: "Cardiac arrest" },
     8: { name: "Meera Reddy", id: "PT-000248", diag: "Sepsis" },
-  }, [5]),
-  ...makeWard("ICU-3", 10, {
-    3: { name: "Pooja Singh", id: "PT-000249", diag: "Respiratory failure" },
-  }),
+  }, [5], [], "ICU", 8000),
+  ...makeWard("GW-A", 12, {
+    3: { name: "Kiran Rao", id: "PT-000301", diag: "Diabetes mgmt" },
+    7: { name: "Vikram Shah", id: "PT-000302", diag: "Fracture" },
+  }, [11], [], "General", 3500),
+  ...makeWard("PED-1", 8, {
+    2: { name: "Aarav Mehta", id: "PT-000401", diag: "Asthma" },
+  }, [], [], "Pediatric", 4500),
+  ...makeWard("MAT-1", 8, {
+    4: { name: "Sneha Joshi", id: "PT-000501", diag: "Labour" },
+  }, [], [8], "Maternity", 5500),
+  ...makeWard("ISO-1", 6, {
+    1: { name: "Rahul Nair", id: "PT-000601", diag: "Tuberculosis" },
+  }, [], [], "Isolation", 6000),
 ];
 
 export type AssetStatus = "available" | "in_use" | "maintenance" | "out_of_service";
