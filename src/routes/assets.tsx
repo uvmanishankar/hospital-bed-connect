@@ -151,7 +151,7 @@ function AssetsPage() {
                       ) : "—"}
                     </td>
                     <td className="py-3 px-2 text-xs text-muted-foreground whitespace-nowrap">{a.lastUpdated}</td>
-                    <td className="py-3 px-2"><button className="p-1 hover:bg-muted rounded-md"><MoreVertical size={16} /></button></td>
+                    <td className="py-3 px-2"><button onClick={() => toast(`Actions for ${a.tag}`, { description: a.name })} className="p-1 hover:bg-muted rounded-md"><MoreVertical size={16} /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -160,11 +160,11 @@ function AssetsPage() {
           <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
             <div>Showing 1 to {visible.length} of {assets.length} assets</div>
             <div className="flex items-center gap-1">
-              <button className="h-7 w-7 rounded-md border border-border">‹</button>
-              <button className="h-7 w-7 rounded-md bg-primary text-white">1</button>
-              <button className="h-7 w-7 rounded-md border border-border">2</button>
-              <button className="h-7 w-7 rounded-md border border-border">3</button>
-              <button className="h-7 w-7 rounded-md border border-border">›</button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} className="h-7 w-7 rounded-md border border-border hover:bg-muted">‹</button>
+              {[1, 2, 3].map(n => (
+                <button key={n} onClick={() => setPage(n)} className={`h-7 w-7 rounded-md border ${page === n ? "bg-primary text-white border-primary" : "border-border hover:bg-muted"}`}>{n}</button>
+              ))}
+              <button onClick={() => setPage(p => Math.min(3, p + 1))} className="h-7 w-7 rounded-md border border-border hover:bg-muted">›</button>
             </div>
           </div>
         </div>
