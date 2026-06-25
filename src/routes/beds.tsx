@@ -5,6 +5,7 @@ import {
   Bed as BedIcon, Filter, Plus, X, Wrench, Lock, CheckCircle2, Users,
   ArrowRightLeft, UserMinus, Sparkles, AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell, StatCard } from "@/components/AppShell";
 import { getBeds } from "@/lib/servicenow.functions";
 import { mockBeds, type Bed, type BedStatus } from "@/lib/mock-data";
@@ -53,10 +54,10 @@ function BedsPage() {
       breadcrumb={["Home", "Beds"]}
       actions={
         <>
-          <button className="inline-flex h-10 px-4 items-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold hover:bg-muted">
+          <button onClick={() => toast.info("Filters coming soon")} className="cursor-pointer inline-flex h-10 px-4 items-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold hover:bg-muted">
             <Filter size={16} /> Filters
           </button>
-          <button className="inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-[var(--shadow-glow)]">
+          <button onClick={() => toast.success("New bed added")} className="cursor-pointer inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-[var(--shadow-glow)] hover:opacity-90">
             <Plus size={16} /> Add Bed
           </button>
         </>
@@ -79,7 +80,7 @@ function BedsPage() {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`pb-3 text-sm font-semibold capitalize ${tab === t ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+                  className={`cursor-pointer pb-3 text-sm font-semibold capitalize ${tab === t ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {t === "ward" ? "Ward View" : "List View"}
                 </button>
@@ -139,7 +140,7 @@ function BedsPage() {
                       <td className="py-2.5 px-2">{b.patient ?? "—"}</td>
                       <td className="py-2.5 px-2">{b.diagnosis ?? "—"}</td>
                       <td className="py-2.5 px-2">{b.doctor ?? "—"}</td>
-                      <td className="py-2.5 px-2"><button className="text-primary text-xs font-semibold">View</button></td>
+                      <td className="py-2.5 px-2"><button className="cursor-pointer text-primary text-xs font-semibold hover:underline">View</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -167,7 +168,7 @@ function BedTile({ bed, selected, onSelect }: { bed: Bed; selected: boolean; onS
   return (
     <button
       onClick={onSelect}
-      className={`relative text-left rounded-xl border-2 ${s.border} ${s.bg} px-3 py-3 transition hover:shadow-md ${selected ? "ring-2 ring-primary ring-offset-2" : ""}`}
+      className={`cursor-pointer relative text-left rounded-xl border-2 ${s.border} ${s.bg} px-3 py-3 transition hover:shadow-md ${selected ? "ring-2 ring-primary ring-offset-2" : ""}`}
     >
       <Icon size={18} className={`${s.iconC} mb-2`} />
       <div className={`text-xs font-bold ${s.text}`}>{bed.ward}</div>
@@ -208,7 +209,7 @@ function BedDetails({ bed, onClose }: { bed: Bed | null; onClose: () => void }) 
     <div className="bg-card border border-border rounded-2xl p-5 self-start sticky top-24">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-secondary">Bed Details</h3>
-        <button onClick={onClose} className="p-1 hover:bg-muted rounded-md"><X size={16} /></button>
+        <button onClick={onClose} className="cursor-pointer p-1 hover:bg-muted rounded-md"><X size={16} /></button>
       </div>
       <div className="mt-4 flex items-center justify-between">
         <div className="font-bold text-secondary">{bed.ward} - Bed {bed.number}</div>
@@ -225,13 +226,13 @@ function BedDetails({ bed, onClose }: { bed: Bed | null; onClose: () => void }) 
       <div className="mt-5">
         <div className="text-xs font-semibold text-secondary mb-2">Actions</div>
         <div className="grid grid-cols-2 gap-2">
-          <button className="h-10 rounded-lg bg-primary text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5">
+          <button onClick={() => toast.success(`Transfer initiated for ${bed.ward}-${bed.number}`)} className="cursor-pointer h-10 rounded-lg bg-primary text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:opacity-90 transition">
             <ArrowRightLeft size={14} /> Transfer Bed
           </button>
-          <button className="h-10 rounded-lg bg-warning/15 text-amber-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5">
+          <button onClick={() => toast.success(`${bed.patient ?? "Patient"} marked for discharge`)} className="cursor-pointer h-10 rounded-lg bg-warning/15 text-amber-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-warning/25 transition">
             <UserMinus size={14} /> Discharge
           </button>
-          <button className="h-10 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold inline-flex items-center justify-center gap-1.5 col-span-2">
+          <button onClick={() => toast.success(`Bed ${bed.ward}-${bed.number} sent for cleaning`)} className="cursor-pointer h-10 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold inline-flex items-center justify-center gap-1.5 col-span-2 hover:bg-destructive/20 transition">
             <Sparkles size={14} /> Mark for Cleaning
           </button>
         </div>
