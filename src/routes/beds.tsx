@@ -176,9 +176,142 @@ function BedsPage() {
         </div>
 
         {/* Bed details */}
-        <BedDetails bed={selected} onClose={() => setSelected(null)} />
+        <BedDetails bed={selected} onClose={() => setSelected(null)} onAllocate={openAllocate} />
       </div>
+
+      {allocateOpen && (
+        <AllocateDialog
+          beds={beds}
+          target={allocateTarget}
+          onClose={() => setAllocateOpen(false)}
+          onConfirm={handleAllocate}
+        />
+      )}
     </AppShell>
+  );
+}
+
+function AllocateDialog({ beds, target, onClose, onConfirm }: {
+  beds: Bed[];
+  target: Bed | null;
+  onClose: () => void;
+  onConfirm: (bedId: string, patient: string, type: PatientType) => void;
+}) {
+  const [patient, setPatient] = useState("");
+  const [type, setType] = useState<PatientType>(target?.bedType === "ICU" ? "critical" : target?.bedType === "Pediatric" ? "pediatric" : target?.bedType === "Maternity" ? "maternity" : target?.bedType === "Isolation" ? "infectious" : "general");
+  const [bedId, setBedId] = useState<string>(target?.id ?? "");
+
+  const requirement = PATIENT_TYPES.find(p => p.value === type)!;
+  const availableForType = useMemo(
+    () => beds.filter(b => b.status === "available" && b.bedType === requirement.requires),
+    [beds, requirement],
+  );
+  const targetBed = beds.find(b => b.id === bedId) ?? null;
+  const targetMismatch = targetBed && targetBed.bedType !== requirement.requires;
+  const targetUnavailable = targetBed && targetBed.status !== "available";
+
+  const canSubmit = patient.trim().length > 0 && targetBed && !targetMismatch && !targetUnavailable;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-secondary/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card w-full max-w-2xl rounded-2xl border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <h3 className="font-semibold text-secondary text-lg">Allocate Bed to Patient</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Patient type determines which bed types are eligible.</p>
+          </div>
+          <button onClick={onClose} className="cursor-pointer p-1.5 hover:bg-muted rounded-md"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+          <div>
+            <label className="text-xs font-semibold text-secondary">Patient Name</label>
+            <input
+              value={patient}
+              onChange={(e) => setPatient(e.target.value)}
+              placeholder="e.g. Riya Sharma"
+              className="mt-1 w-full h-10 px-3 rounded-lg border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-secondary">Patient Type</label>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {PATIENT_TYPES.map((p) => {
+                const active = type === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    onClick={() => setType(p.value)}
+                    className={`cursor-pointer text-left rounded-xl border-2 px-3 py-2.5 transition ${active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 bg-white"}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-secondary">{p.label}</div>
+                      {active && <Check size={14} className="text-primary" />}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{p.description}</div>
+                    <div className="text-[10px] text-primary font-bold mt-1 uppercase tracking-wider">Requires: {p.requires}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-secondary">Select Bed</label>
+              <span className="text-[11px] text-muted-foreground">{availableForType.length} compatible bed{availableForType.length === 1 ? "" : "s"} available</span>
+            </div>
+            <select
+              value={bedId}
+              onChange={(e) => setBedId(e.target.value)}
+              className="mt-1 w-full h-10 px-3 rounded-lg border border-border bg-white text-sm"
+            >
+              <option value="">— Choose a bed —</option>
+              {availableForType.map(b => (
+                <option key={b.id} value={b.id}>{b.id} · {b.bedType} · ₹{b.ratePerDay}/day</option>
+              ))}
+              {targetBed && !availableForType.find(b => b.id === targetBed.id) && (
+                <option value={targetBed.id}>{targetBed.id} · {targetBed.bedType} · {targetBed.status}</option>
+              )}
+            </select>
+
+            {targetMismatch && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning/10 border border-warning/40 px-3 py-2 text-xs text-amber-700">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  <strong>{targetBed?.id}</strong> is a <strong>{targetBed?.bedType}</strong> bed but a{" "}
+                  <strong>{requirement.label}</strong> patient requires a <strong>{requirement.requires}</strong> bed. Pick a compatible bed above.
+                </span>
+              </div>
+            )}
+            {targetUnavailable && !targetMismatch && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span><strong>{targetBed?.id}</strong> is currently {targetBed?.status} and cannot be allocated.</span>
+              </div>
+            )}
+            {!targetBed && availableForType.length === 0 && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>No available <strong>{requirement.requires}</strong> beds. Try a different patient type or free up a bed.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 p-5 border-t border-border">
+          <button onClick={onClose} className="cursor-pointer h-10 px-4 rounded-lg border border-border bg-white text-sm font-semibold hover:bg-muted">Cancel</button>
+          <button
+            disabled={!canSubmit}
+            onClick={() => canSubmit && onConfirm(bedId, patient.trim(), type)}
+            className="cursor-pointer h-10 px-5 rounded-lg bg-primary text-white text-sm font-semibold inline-flex items-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <UserPlus size={14} /> Allocate
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
