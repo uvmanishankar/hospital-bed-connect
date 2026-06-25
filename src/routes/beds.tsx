@@ -55,7 +55,7 @@ function BedsPage() {
     toast.success(`${patient} allocated to ${bedId}`);
   };
 
-  const wards = Array.from(new Set(beds.map(b => b.ward.split("-")[0])));
+  const wards: string[] = Array.from(new Set(beds.map(b => b.ward.split("-")[0])));
   const visibleGroups = useMemo(() => {
     const filtered = beds.filter(b => b.ward.startsWith(ward));
     const groups = new Map<string, Bed[]>();
