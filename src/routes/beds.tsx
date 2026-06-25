@@ -5,6 +5,7 @@ import {
   Bed as BedIcon, Filter, Plus, X, Wrench, Lock, CheckCircle2, Users,
   ArrowRightLeft, UserMinus, Sparkles, AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell, StatCard } from "@/components/AppShell";
 import { getBeds } from "@/lib/servicenow.functions";
 import { mockBeds, type Bed, type BedStatus } from "@/lib/mock-data";
