@@ -347,7 +347,7 @@ function BedStatusBadge({ status }: { status: BedStatus }) {
   return <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${map[status]}`}>{status}</span>;
 }
 
-function BedDetails({ bed, onClose }: { bed: Bed | null; onClose: () => void }) {
+function BedDetails({ bed, onClose, onAllocate }: { bed: Bed | null; onClose: () => void; onAllocate: (bed: Bed | null) => void }) {
   if (!bed) return (
     <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">
       Select a bed to view details
