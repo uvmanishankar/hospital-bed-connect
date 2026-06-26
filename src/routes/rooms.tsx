@@ -14,11 +14,18 @@ export const Route = createFileRoute("/rooms")({
         ].map((w) => (
           <div key={w.ward} className="bg-card border border-border rounded-2xl p-5">
             <div className="text-sm text-muted-foreground">{w.ward}</div>
-            <div className="mt-1 text-3xl font-extrabold text-secondary">{w.occupied}/{w.beds}</div>
-            <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-primary" style={{ width: `${w.occupied / w.beds * 100}%` }} />
+            <div className="mt-1 text-3xl font-extrabold text-secondary">
+              {w.occupied}/{w.beds}
             </div>
-            <div className="mt-2 text-xs text-muted-foreground">{Math.round(w.occupied / w.beds * 100)}% occupied</div>
+            <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary"
+                style={{ width: `${(w.occupied / w.beds) * 100}%` }}
+              />
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              {Math.round((w.occupied / w.beds) * 100)}% occupied
+            </div>
           </div>
         ))}
       </div>

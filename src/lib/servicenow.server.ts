@@ -91,3 +91,18 @@ export async function snGetStaffAvailability(cfg: SNConfig) {
   return snFetch<{ result: SNRow[] }>(cfg, "u_staff_availability", { query: { sysparm_limit: "100" } });
 }
 
+// Patient Admission — table: x_1811536_hospit_0_patient_admission
+// Field mapping:
+//   u_full_name            → patient full name
+//   u_age                  → patient age
+//   u_contact_number       → contact number
+//   u_gender               → gender
+//   u_blood_group          → blood group
+//   u_emergency_contact    → emergency contact name & number
+//   u_referred_by          → referring doctor / hospital
+//   u_insurance_aadhaar_id → insurance policy or Aadhaar ID
+//   u_address              → full address
+export async function snCreatePatientAdmission(cfg: SNConfig, body: Record<string, unknown>) {
+  return snFetch<{ result: SNRow }>(cfg, "x_1811536_hospit_0_patient_admission", { method: "POST", body });
+}
+

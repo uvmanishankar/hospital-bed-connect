@@ -16,7 +16,9 @@ export const Route = createFileRoute("/notifications")({
       <div className="bg-card border border-border rounded-2xl divide-y divide-border">
         {items.map((n, i) => (
           <div key={i} className="p-4 flex items-start gap-3">
-            <div className={`h-2.5 w-2.5 rounded-full mt-1.5 shrink-0 ${n.s === "Critical" ? "bg-destructive" : n.s === "Warning" ? "bg-warning" : "bg-info"}`} />
+            <div
+              className={`h-2.5 w-2.5 rounded-full mt-1.5 shrink-0 ${n.s === "Critical" ? "bg-destructive" : n.s === "Warning" ? "bg-warning" : "bg-info"}`}
+            />
             <div className="flex-1 min-w-0">
               <div className="font-medium text-secondary">{n.t}</div>
               <div className="text-xs text-muted-foreground">{n.d}</div>

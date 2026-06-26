@@ -115,3 +115,40 @@ export const createAdmission = createServerFn({ method: "POST" })
     });
     return { ok: true, source: "servicenow" as const, data: r };
   });
+
+// Patient Admission — POSTs to x_1811536_hospit_0_patient_admission
+// All 9 fields from the "Patient Details" modal are sent directly to ServiceNow.
+export const createPatientAdmission = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({
+      fullName:           z.string().min(1, "Full name is required"),
+      age:                z.string().min(1, "Age is required"),
+      contactNumber:      z.string().min(1, "Contact number is required"),
+      gender:             z.string().min(1, "Gender is required"),
+      bloodGroup:         z.string().optional(),
+      emergencyContact:   z.string().optional(),
+      referredBy:         z.string().optional(),
+      insuranceAadhaarId: z.string().optional(),
+      address:            z.string().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { getSnConfig, snCreatePatientAdmission } = await import("./servicenow.server");
+    const cfg = getSnConfig();
+    // Build payload — only send fields that have a value
+    const payload: Record<string, string> = {
+      u_full_name:      data.fullName,
+      u_age:            data.age,
+      u_contact_number: data.contactNumber,
+      u_gender:         data.gender,
+    };
+    if (data.bloodGroup)         payload.u_blood_group          = data.bloodGroup;
+    if (data.emergencyContact)   payload.u_emergency_contact    = data.emergencyContact;
+    if (data.referredBy)         payload.u_referred_by          = data.referredBy;
+    if (data.insuranceAadhaarId) payload.u_insurance_aadhaar_id = data.insuranceAadhaarId;
+    if (data.address)            payload.u_address               = data.address;
+
+    if (!cfg) return { ok: true, source: "mock" as const, sysId: "mock-id", payload };
+    const r = await snCreatePatientAdmission(cfg, payload);
+    return { ok: true, source: "servicenow" as const, sysId: r.result?.sys_id ?? "", data: r };
+  });

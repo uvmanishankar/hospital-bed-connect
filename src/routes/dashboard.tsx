@@ -1,12 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import {
-  Bed, CheckCircle2, Users, Wrench, AlertTriangle, Monitor, UserCheck,
-  TrendingUp, Bell, Plus,
+  Bed,
+  CheckCircle2,
+  Users,
+  Wrench,
+  AlertTriangle,
+  Monitor,
+  UserCheck,
+  TrendingUp,
+  Bell,
+  Plus,
 } from "lucide-react";
 import {
-  AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell, BarChart, Bar, Legend,
+  AreaChart,
+  Area,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  Legend,
 } from "recharts";
 import { AppShell, StatCard } from "@/components/AppShell";
 import { getDashboard } from "@/lib/servicenow.functions";
@@ -37,12 +56,48 @@ function Dashboard() {
       }
     >
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard label="Total Beds" value={t.totalBeds} sublabel="All Departments" icon={Bed} tone="info" />
-        <StatCard label="Available" value={t.availableBeds} sublabel="38.3% Available" icon={CheckCircle2} tone="success" />
-        <StatCard label="Occupied" value={t.occupiedBeds} sublabel="49.2% Occupied" icon={Users} tone="warning" />
-        <StatCard label="Maintenance" value={t.maintenance} sublabel="9.4% of total" icon={Wrench} tone="accent" />
-        <StatCard label="Out of Service" value={t.outOfService} sublabel="3.1% of total" icon={AlertTriangle} tone="danger" />
-        <StatCard label="Active Staff" value={t.activeStaff} sublabel="On duty" icon={UserCheck} tone="primary" />
+        <StatCard
+          label="Total Beds"
+          value={t.totalBeds}
+          sublabel="All Departments"
+          icon={Bed}
+          tone="info"
+        />
+        <StatCard
+          label="Available"
+          value={t.availableBeds}
+          sublabel="38.3% Available"
+          icon={CheckCircle2}
+          tone="success"
+        />
+        <StatCard
+          label="Occupied"
+          value={t.occupiedBeds}
+          sublabel="49.2% Occupied"
+          icon={Users}
+          tone="warning"
+        />
+        <StatCard
+          label="Maintenance"
+          value={t.maintenance}
+          sublabel="9.4% of total"
+          icon={Wrench}
+          tone="accent"
+        />
+        <StatCard
+          label="Out of Service"
+          value={t.outOfService}
+          sublabel="3.1% of total"
+          icon={AlertTriangle}
+          tone="danger"
+        />
+        <StatCard
+          label="Active Staff"
+          value={t.activeStaff}
+          sublabel="On duty"
+          icon={UserCheck}
+          tone="primary"
+        />
       </div>
 
       <div className="mt-6 grid lg:grid-cols-3 gap-4">
@@ -68,7 +123,13 @@ function Dashboard() {
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Area type="monotone" dataKey="occupancy" stroke="#008C95" strokeWidth={2} fill="url(#occ)" />
+                <Area
+                  type="monotone"
+                  dataKey="occupancy"
+                  stroke="#008C95"
+                  strokeWidth={2}
+                  fill="url(#occ)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -81,8 +142,16 @@ function Dashboard() {
           <div className="mt-4 h-52 relative">
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={data.bedsByDepartment} dataKey="value" innerRadius={55} outerRadius={80} paddingAngle={2}>
-                  {data.bedsByDepartment.map((d, i) => <Cell key={i} fill={d.color} />)}
+                <Pie
+                  data={data.bedsByDepartment}
+                  dataKey="value"
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={2}
+                >
+                  {data.bedsByDepartment.map((d, i) => (
+                    <Cell key={i} fill={d.color} />
+                  ))}
                 </Pie>
                 <Tooltip />
               </PieChart>
@@ -109,11 +178,16 @@ function Dashboard() {
         <div className="bg-card border border-border rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-secondary">Recent Bed Requests</h3>
-            <a href="#" className="text-xs text-primary font-semibold">View All</a>
+            <a href="#" className="text-xs text-primary font-semibold">
+              View All
+            </a>
           </div>
           <div className="mt-4 space-y-2.5">
             {data.recentRequests.map((r) => (
-              <div key={r.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/60 transition">
+              <div
+                key={r.id}
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/60 transition"
+              >
                 <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
                   <Bed size={14} className="text-primary" />
                 </div>
@@ -156,10 +230,26 @@ function Dashboard() {
           </div>
           <div className="mt-4 space-y-3">
             {[
-              { t: "ICU-1 capacity nearing limit", s: "Critical", color: "bg-destructive/10 text-destructive" },
-              { t: "Ventilator AST-INF-007 due maintenance", s: "Warning", color: "bg-warning/15 text-amber-600" },
-              { t: "3 admission requests pending > 30m", s: "SLA Risk", color: "bg-info/10 text-info" },
-              { t: "General Ward staff shortage", s: "Warning", color: "bg-warning/15 text-amber-600" },
+              {
+                t: "ICU-1 capacity nearing limit",
+                s: "Critical",
+                color: "bg-destructive/10 text-destructive",
+              },
+              {
+                t: "Ventilator AST-INF-007 due maintenance",
+                s: "Warning",
+                color: "bg-warning/15 text-amber-600",
+              },
+              {
+                t: "3 admission requests pending > 30m",
+                s: "SLA Risk",
+                color: "bg-info/10 text-info",
+              },
+              {
+                t: "General Ward staff shortage",
+                s: "Warning",
+                color: "bg-warning/15 text-amber-600",
+              },
             ].map((a, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-xl border border-border">
                 <div className="h-8 w-8 rounded-lg bg-destructive/10 grid place-items-center shrink-0">
@@ -168,7 +258,11 @@ function Dashboard() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-secondary">{a.t}</div>
                   <div className="mt-1 inline-flex text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider items-center gap-1 ${a.color}">
-                    <span className={`inline-flex text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${a.color}`}>{a.s}</span>
+                    <span
+                      className={`inline-flex text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${a.color}`}
+                    >
+                      {a.s}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -179,7 +273,9 @@ function Dashboard() {
 
       {data.source === "mock" && (
         <div className="mt-4 text-xs text-muted-foreground flex items-center gap-2">
-          <Monitor size={12} /> Data source: <span className="font-semibold text-foreground/70">mock</span> · Configure ServiceNow secrets to switch to live.
+          <Monitor size={12} /> Data source:{" "}
+          <span className="font-semibold text-foreground/70">mock</span> · Configure ServiceNow
+          secrets to switch to live.
         </div>
       )}
     </AppShell>
@@ -192,5 +288,11 @@ function StatusPill({ status }: { status: string }) {
     Approved: "bg-success/15 text-success",
     "In Progress": "bg-info/10 text-info",
   };
-  return <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${map[status] ?? "bg-muted text-foreground/70"}`}>{status}</span>;
+  return (
+    <span
+      className={`text-[10px] font-bold px-2 py-1 rounded-md ${map[status] ?? "bg-muted text-foreground/70"}`}
+    >
+      {status}
+    </span>
+  );
 }

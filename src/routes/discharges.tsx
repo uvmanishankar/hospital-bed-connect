@@ -9,7 +9,13 @@ export const Route = createFileRoute("/discharges")({
         <h3 className="font-semibold text-secondary mb-4">Recent Discharges</h3>
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground border-b border-border">
-            <tr>{["Patient", "Bed", "Ward", "Discharged"].map(h => <th key={h} className="text-left py-2 px-2 font-medium">{h}</th>)}</tr>
+            <tr>
+              {["Patient", "Bed", "Ward", "Discharged"].map((h) => (
+                <th key={h} className="text-left py-2 px-2 font-medium">
+                  {h}
+                </th>
+              ))}
+            </tr>
           </thead>
           <tbody>
             {[
@@ -18,7 +24,11 @@ export const Route = createFileRoute("/discharges")({
               ["Meera Reddy", "ICU-2-08", "ICU", "Yesterday"],
             ].map((r, i) => (
               <tr key={i} className="border-b border-border">
-                {r.map((c, j) => <td key={j} className="py-3 px-2">{c}</td>)}
+                {r.map((c, j) => (
+                  <td key={j} className="py-3 px-2">
+                    {c}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

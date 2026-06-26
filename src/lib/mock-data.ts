@@ -63,7 +63,15 @@ export interface Bed {
   ratePerDay?: number;
 }
 
-function makeWard(prefix: string, count: number, occupied: Record<number, { name: string; id: string; diag: string }>, maint: number[] = [], blocked: number[] = [], bedType = "General", ratePerDay = 3500): Bed[] {
+function makeWard(
+  prefix: string,
+  count: number,
+  occupied: Record<number, { name: string; id: string; diag: string }>,
+  maint: number[] = [],
+  blocked: number[] = [],
+  bedType = "General",
+  ratePerDay = 3500,
+): Bed[] {
   return Array.from({ length: count }, (_, i) => {
     const n = i + 1;
     const num = String(n).padStart(2, "0");
@@ -93,27 +101,75 @@ function makeWard(prefix: string, count: number, occupied: Record<number, { name
 }
 
 export const mockBeds: Bed[] = [
-  ...makeWard("ICU-1", 10, {
-    2: { name: "Ravi Kumar", id: "PT-000245", diag: "Severe Pneumonia" },
-    6: { name: "Anjali Verma", id: "PT-000246", diag: "Post-op recovery" },
-  }, [5], [10], "ICU", 8000),
-  ...makeWard("ICU-2", 10, {
-    2: { name: "Suresh Babu", id: "PT-000247", diag: "Cardiac arrest" },
-    8: { name: "Meera Reddy", id: "PT-000248", diag: "Sepsis" },
-  }, [5], [], "ICU", 8000),
-  ...makeWard("GW-A", 12, {
-    3: { name: "Kiran Rao", id: "PT-000301", diag: "Diabetes mgmt" },
-    7: { name: "Vikram Shah", id: "PT-000302", diag: "Fracture" },
-  }, [11], [], "General", 3500),
-  ...makeWard("PED-1", 8, {
-    2: { name: "Aarav Mehta", id: "PT-000401", diag: "Asthma" },
-  }, [], [], "Pediatric", 4500),
-  ...makeWard("MAT-1", 8, {
-    4: { name: "Sneha Joshi", id: "PT-000501", diag: "Labour" },
-  }, [], [8], "Maternity", 5500),
-  ...makeWard("ISO-1", 6, {
-    1: { name: "Rahul Nair", id: "PT-000601", diag: "Tuberculosis" },
-  }, [], [], "Isolation", 6000),
+  ...makeWard(
+    "ICU-1",
+    10,
+    {
+      2: { name: "Ravi Kumar", id: "PT-000245", diag: "Severe Pneumonia" },
+      6: { name: "Anjali Verma", id: "PT-000246", diag: "Post-op recovery" },
+    },
+    [5],
+    [10],
+    "ICU",
+    8000,
+  ),
+  ...makeWard(
+    "ICU-2",
+    10,
+    {
+      2: { name: "Suresh Babu", id: "PT-000247", diag: "Cardiac arrest" },
+      8: { name: "Meera Reddy", id: "PT-000248", diag: "Sepsis" },
+    },
+    [5],
+    [],
+    "ICU",
+    8000,
+  ),
+  ...makeWard(
+    "GW-A",
+    12,
+    {
+      3: { name: "Kiran Rao", id: "PT-000301", diag: "Diabetes mgmt" },
+      7: { name: "Vikram Shah", id: "PT-000302", diag: "Fracture" },
+    },
+    [11],
+    [],
+    "General",
+    3500,
+  ),
+  ...makeWard(
+    "PED-1",
+    8,
+    {
+      2: { name: "Aarav Mehta", id: "PT-000401", diag: "Asthma" },
+    },
+    [],
+    [],
+    "Pediatric",
+    4500,
+  ),
+  ...makeWard(
+    "MAT-1",
+    8,
+    {
+      4: { name: "Sneha Joshi", id: "PT-000501", diag: "Labour" },
+    },
+    [],
+    [8],
+    "Maternity",
+    5500,
+  ),
+  ...makeWard(
+    "ISO-1",
+    6,
+    {
+      1: { name: "Rahul Nair", id: "PT-000601", diag: "Tuberculosis" },
+    },
+    [],
+    [],
+    "Isolation",
+    6000,
+  ),
 ];
 
 export type AssetStatus = "available" | "in_use" | "maintenance" | "out_of_service";
@@ -132,13 +188,89 @@ export interface Asset {
 }
 
 export const mockAssets: Asset[] = [
-  { id: "1", tag: "AST-VENT-001", name: "Ventilator - Philips", model: "V60", type: "Ventilator", location: "ICU - 1", room: "Room 101", status: "in_use", assignedTo: "Ravi Kumar", bed: "ICU-1-02", lastUpdated: "21 May 2025 10:30 AM" },
-  { id: "2", tag: "AST-MON-023", name: "Patient Monitor", model: "Mindray iMEC12", type: "Monitor", location: "ICU - 1", room: "Room 102", status: "available", lastUpdated: "21 May 2025 09:45 AM" },
-  { id: "3", tag: "AST-WCH-015", name: "Wheelchair", model: "Karma Ergo", type: "Wheelchair", location: "General Ward", room: "Ward A", status: "in_use", assignedTo: "Meera Reddy", bed: "GW-A-05", lastUpdated: "21 May 2025 09:10 AM" },
-  { id: "4", tag: "AST-INF-007", name: "Infusion Pump", model: "B. Braun", type: "Infusion Pump", location: "ICU - 2", room: "Room 201", status: "maintenance", lastUpdated: "21 May 2025 08:50 AM" },
-  { id: "5", tag: "AST-OXY-004", name: "Oxygen Concentrator", model: "Philips EverFlo", type: "Oxygen Concentrator", location: "Emergency", room: "ER-1", status: "available", lastUpdated: "21 May 2025 08:20 AM" },
-  { id: "6", tag: "AST-MON-030", name: "Patient Monitor", model: "Mindray iMEC12", type: "Monitor", location: "Pediatrics", room: "Room 301", status: "out_of_service", lastUpdated: "20 May 2025 05:30 PM" },
-  { id: "7", tag: "AST-VENT-002", name: "Ventilator - Drager", model: "Evita V500", type: "Ventilator", location: "ICU - 3", room: "Room 301", status: "in_use", assignedTo: "Suresh Babu", bed: "ICU-3-03", lastUpdated: "20 May 2025 04:15 PM" },
+  {
+    id: "1",
+    tag: "AST-VENT-001",
+    name: "Ventilator - Philips",
+    model: "V60",
+    type: "Ventilator",
+    location: "ICU - 1",
+    room: "Room 101",
+    status: "in_use",
+    assignedTo: "Ravi Kumar",
+    bed: "ICU-1-02",
+    lastUpdated: "21 May 2025 10:30 AM",
+  },
+  {
+    id: "2",
+    tag: "AST-MON-023",
+    name: "Patient Monitor",
+    model: "Mindray iMEC12",
+    type: "Monitor",
+    location: "ICU - 1",
+    room: "Room 102",
+    status: "available",
+    lastUpdated: "21 May 2025 09:45 AM",
+  },
+  {
+    id: "3",
+    tag: "AST-WCH-015",
+    name: "Wheelchair",
+    model: "Karma Ergo",
+    type: "Wheelchair",
+    location: "General Ward",
+    room: "Ward A",
+    status: "in_use",
+    assignedTo: "Meera Reddy",
+    bed: "GW-A-05",
+    lastUpdated: "21 May 2025 09:10 AM",
+  },
+  {
+    id: "4",
+    tag: "AST-INF-007",
+    name: "Infusion Pump",
+    model: "B. Braun",
+    type: "Infusion Pump",
+    location: "ICU - 2",
+    room: "Room 201",
+    status: "maintenance",
+    lastUpdated: "21 May 2025 08:50 AM",
+  },
+  {
+    id: "5",
+    tag: "AST-OXY-004",
+    name: "Oxygen Concentrator",
+    model: "Philips EverFlo",
+    type: "Oxygen Concentrator",
+    location: "Emergency",
+    room: "ER-1",
+    status: "available",
+    lastUpdated: "21 May 2025 08:20 AM",
+  },
+  {
+    id: "6",
+    tag: "AST-MON-030",
+    name: "Patient Monitor",
+    model: "Mindray iMEC12",
+    type: "Monitor",
+    location: "Pediatrics",
+    room: "Room 301",
+    status: "out_of_service",
+    lastUpdated: "20 May 2025 05:30 PM",
+  },
+  {
+    id: "7",
+    tag: "AST-VENT-002",
+    name: "Ventilator - Drager",
+    model: "Evita V500",
+    type: "Ventilator",
+    location: "ICU - 3",
+    room: "Room 301",
+    status: "in_use",
+    assignedTo: "Suresh Babu",
+    bed: "ICU-3-03",
+    lastUpdated: "20 May 2025 04:15 PM",
+  },
 ];
 
 export const mockAssetCategories = [
@@ -150,8 +282,32 @@ export const mockAssetCategories = [
 ];
 
 export const mockAssetRequests = [
-  { id: "REQ-AST-1056", asset: "Ventilator", location: "ICU - 2", status: "Approved", time: "10 min ago" },
-  { id: "REQ-AST-1055", asset: "Monitor", location: "General Ward", status: "Pending", time: "1 hour ago" },
-  { id: "REQ-AST-1054", asset: "Wheelchair", location: "Pediatrics", status: "In Progress", time: "2 hours ago" },
-  { id: "REQ-AST-1053", asset: "Infusion Pump", location: "ICU - 1", status: "Pending", time: "3 hours ago" },
+  {
+    id: "REQ-AST-1056",
+    asset: "Ventilator",
+    location: "ICU - 2",
+    status: "Approved",
+    time: "10 min ago",
+  },
+  {
+    id: "REQ-AST-1055",
+    asset: "Monitor",
+    location: "General Ward",
+    status: "Pending",
+    time: "1 hour ago",
+  },
+  {
+    id: "REQ-AST-1054",
+    asset: "Wheelchair",
+    location: "Pediatrics",
+    status: "In Progress",
+    time: "2 hours ago",
+  },
+  {
+    id: "REQ-AST-1053",
+    asset: "Infusion Pump",
+    location: "ICU - 1",
+    status: "Pending",
+    time: "3 hours ago",
+  },
 ];

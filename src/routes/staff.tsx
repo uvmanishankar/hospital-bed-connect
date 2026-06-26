@@ -24,10 +24,18 @@ export const Route = createFileRoute("/staff")({
             { n: "Nurse Suresh", r: "Nurse", w: "ICU - 3" },
           ].map((s) => (
             <div key={s.n} className="flex items-center gap-3 p-3 rounded-xl border border-border">
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-white text-xs font-bold">{s.n.split(" ").map(p => p[0]).slice(0, 2).join("")}</div>
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-white text-xs font-bold">
+                {s.n
+                  .split(" ")
+                  .map((p) => p[0])
+                  .slice(0, 2)
+                  .join("")}
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold truncate">{s.n}</div>
-                <div className="text-[11px] text-muted-foreground">{s.r} · {s.w}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {s.r} · {s.w}
+                </div>
               </div>
               <span className="h-2.5 w-2.5 rounded-full bg-success" />
             </div>
