@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
 import { ClipboardList, Plus, Send } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell, StatCard } from "@/components/AppShell";
 import { createPatientAdmission } from "@/lib/servicenow.functions";
 
@@ -118,7 +119,6 @@ out tags center qt 1000;
   }, []);
 
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const mutation = useMutation({
     mutationFn: (input: {
       fullName: string;
@@ -131,7 +131,7 @@ out tags center qt 1000;
       insuranceAadhaarId: string;
       address: string;
     }) => createPatientAdmission({ data: input }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false);
       setName("");
@@ -144,6 +144,21 @@ out tags center qt 1000;
       setReferredBy("");
       setInsurance("");
       setAddress("");
+
+      if ((result as { source?: string }).source === "servicenow") {
+        toast.success("Admission submitted to ServiceNow", {
+          description: `Record created — Sys ID: ${(result as { sysId?: string }).sysId ?? "unknown"}`,
+        });
+      } else {
+        toast.info("Saved in mock mode", {
+          description: "ServiceNow env vars not set — record was not sent to ServiceNow.",
+        });
+      }
+    },
+    onError: (err: unknown) => {
+      toast.error("Failed to submit admission", {
+        description: err instanceof Error ? err.message : "Unknown error from ServiceNow.",
+      });
     },
   });
 
