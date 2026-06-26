@@ -25,6 +25,7 @@ function AdmissionsPage() {
   const [referredBy, setReferredBy] = useState("");
   const [insurance, setInsurance] = useState("");
   const [address, setAddress] = useState("");
+  const [conditionType, setConditionType] = useState("");
   const [showHospSuggestions, setShowHospSuggestions] = useState(false);
   const [allHospitals, setAllHospitals] = useState<string[]>([]);
   const [hospitalsLoading, setHospitalsLoading] = useState(false);
@@ -130,6 +131,7 @@ out tags center qt 1000;
       referredBy: string;
       insuranceAadhaarId: string;
       address: string;
+      conditionType: string;
     }) => createPatientAdmission({ data: input }),
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -144,6 +146,7 @@ out tags center qt 1000;
       setReferredBy("");
       setInsurance("");
       setAddress("");
+      setConditionType("");
 
       if ((result as { source?: string }).source === "servicenow") {
         toast.success("Admission submitted to ServiceNow", {
@@ -272,6 +275,7 @@ out tags center qt 1000;
                   referredBy,
                   insuranceAadhaarId: insurance,
                   address,
+                  conditionType,
                 });
               }}
             >
@@ -331,13 +335,32 @@ out tags center qt 1000;
                 </div>
 
                 <div className="group">
+                  <label>
+                    Condition Type
+                    <span className="req">*</span>
+                  </label>
+                  <select value={conditionType} onChange={(e) => setConditionType(e.target.value)} required>
+                    <option value="">Select condition type</option>
+                    <option value="Critical">Critical</option>
+                    <option value="Emergency">Emergency</option>
+                    <option value="Serious">Serious</option>
+                    <option value="Stable">Stable</option>
+                    <option value="Minor">Minor</option>
+                  </select>
+                </div>
+
+                <div className="group">
                   <label>Blood Group</label>
                   <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}>
                     <option>Unknown</option>
                     <option>A+</option>
+                    <option>A-</option>
                     <option>B+</option>
+                    <option>B-</option>
                     <option>AB+</option>
+                    <option>AB-</option>
                     <option>O+</option>
+                    <option>O-</option>
                   </select>
                 </div>
 

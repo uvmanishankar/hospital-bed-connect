@@ -65,7 +65,7 @@ function Dashboard() {
         />
         <StatCard
           label="Available"
-          value={t.availableBeds}
+          value={t.availableBeds}  
           sublabel="38.3% Available"
           icon={CheckCircle2}
           tone="success"

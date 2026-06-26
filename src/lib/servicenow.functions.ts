@@ -136,17 +136,17 @@ export const createPatientAdmission = createServerFn({ method: "POST" })
     const { getSnConfig, snCreatePatientAdmission } = await import("./servicenow.server");
     const cfg = getSnConfig();
     // Build payload — only send fields that have a value
-    const payload: Record<string, string> = {
-      u_full_name:      data.fullName,
-      u_age:            data.age,
-      u_contact_number: data.contactNumber,
-      u_gender:         data.gender,
+      const payload: Record<string, string> = {
+      patient_name:   data.fullName,
+      patient_age:    data.age,
+      phone_number:   data.contactNumber,
+      gender:         data.gender,
     };
-    if (data.bloodGroup)         payload.u_blood_group          = data.bloodGroup;
-    if (data.emergencyContact)   payload.u_emergency_contact    = data.emergencyContact;
-    if (data.referredBy)         payload.u_referred_by          = data.referredBy;
-    if (data.insuranceAadhaarId) payload.u_insurance_aadhaar_id = data.insuranceAadhaarId;
-    if (data.address)            payload.u_address               = data.address;
+    if (data.bloodGroup)         payload.blood_group        = data.bloodGroup;
+    if (data.emergencyContact)   payload.emergency_contact  = data.emergencyContact;
+    if (data.referredBy)         payload.condition_notes    = data.referredBy;
+    if (data.insuranceAadhaarId) payload.insurance_aadhaar  = data.insuranceAadhaarId;
+    if (data.address)            payload.address             = data.address;
 
     if (!cfg) return { ok: true, source: "mock" as const, sysId: "mock-id", payload };
     const r = await snCreatePatientAdmission(cfg, payload);
