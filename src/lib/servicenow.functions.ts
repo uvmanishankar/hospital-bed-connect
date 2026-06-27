@@ -3,11 +3,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mockAssetCategories, mockAssetRequests, mockAssets, mockBeds, mockDashboard } from "./mock-data";
 
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const { getSnConfig } = await import("./servicenow.server");
   const cfg = getSnConfig();
   if (!cfg) return { source: "mock" as const, ...mockDashboard };
-  // Try ServiceNow; on any failure return mock so UI keeps working.
   try {
     const { snGetBeds } = await import("./servicenow.server");
     const beds = await snGetBeds(cfg);
@@ -17,6 +17,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
   }
 });
 
+// ─── Beds ─────────────────────────────────────────────────────────────────────
 export const getBeds = createServerFn({ method: "GET" }).handler(async () => {
   const { getSnConfig } = await import("./servicenow.server");
   const cfg = getSnConfig();
@@ -62,6 +63,7 @@ export const updateBed = createServerFn({ method: "POST" })
     return { ok: true, source: "servicenow" as const, data: r };
   });
 
+// ─── Assets ───────────────────────────────────────────────────────────────────
 export const getAssets = createServerFn({ method: "GET" }).handler(async () => {
   const { getSnConfig } = await import("./servicenow.server");
   const cfg = getSnConfig();
@@ -93,6 +95,7 @@ export const createAsset = createServerFn({ method: "POST" })
     return { ok: true, source: "servicenow" as const, data: r };
   });
 
+// ─── Legacy admission (u_bed_request) ────────────────────────────────────────
 export const createAdmission = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
@@ -116,7 +119,8 @@ export const createAdmission = createServerFn({ method: "POST" })
     return { ok: true, source: "servicenow" as const, data: r };
   });
 
-// Patient Admission — POSTs to x_1811536_hospit_0_patient_admission
+// ─── Patient Admission — create ───────────────────────────────────────────────
+// POSTs to x_1811536_hospit_0_patient_admission.
 // All 9 fields from the "Patient Details" modal are sent directly to ServiceNow.
 export const createPatientAdmission = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -130,13 +134,13 @@ export const createPatientAdmission = createServerFn({ method: "POST" })
       referredBy:         z.string().optional(),
       insuranceAadhaarId: z.string().optional(),
       address:            z.string().optional(),
+      conditionType:      z.string().optional(),
     }).parse(d),
   )
   .handler(async ({ data }) => {
     const { getSnConfig, snCreatePatientAdmission } = await import("./servicenow.server");
     const cfg = getSnConfig();
-    // Build payload — only send fields that have a value
-      const payload: Record<string, string> = {
+    const payload: Record<string, string> = {
       patient_name:   data.fullName,
       patient_age:    data.age,
       phone_number:   data.contactNumber,
@@ -147,8 +151,145 @@ export const createPatientAdmission = createServerFn({ method: "POST" })
     if (data.referredBy)         payload.condition_notes    = data.referredBy;
     if (data.insuranceAadhaarId) payload.insurance_aadhaar  = data.insuranceAadhaarId;
     if (data.address)            payload.address             = data.address;
+    if (data.conditionType)      payload.condition_type      = data.conditionType;
 
     if (!cfg) return { ok: true, source: "mock" as const, sysId: "mock-id", payload };
     const r = await snCreatePatientAdmission(cfg, payload);
     return { ok: true, source: "servicenow" as const, sysId: r.result?.sys_id ?? "", data: r };
   });
+
+// ─── Patient Admission — list (for nurse's Admissions page) ──────────────────
+// Returns all admission records from ServiceNow so nurses can see bed assignments.
+// Falls back to empty array if ServiceNow is not configured.
+export const getPatientAdmissions = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSnConfig, snGetPatientAdmissions } = await import("./servicenow.server");
+  const cfg = getSnConfig();
+  if (!cfg) {
+    // Return illustrative mock records so the UI is usable without ServiceNow
+    return {
+      source: "mock" as const,
+      admissions: [
+        {
+          sys_id: "mock-001",
+          patient_name: "Anita Roy",
+          patient_age: "34",
+          gender: "Female",
+          phone_number: "+91 98765 43210",
+          condition_type: "Critical",
+          bed_number: "ICU-2A",
+          nurse_diagnosis: "",
+          nurse_notes: "",
+          ai_analysis: "",
+          sys_created_on: new Date(Date.now() - 10 * 60000).toISOString(),
+        },
+        {
+          sys_id: "mock-002",
+          patient_name: "Mahesh Kumar",
+          patient_age: "58",
+          gender: "Male",
+          phone_number: "+91 98765 11111",
+          condition_type: "Stable",
+          bed_number: "GW-05",
+          nurse_diagnosis: "Hypertension with mild oedema",
+          nurse_notes: "BP monitored every 2h",
+          ai_analysis: "Estimated bed occupancy: 4–5 days. Recommend daily BP monitoring and low-sodium diet. Discharge likely by Day 5 if BP stabilises.",
+          sys_created_on: new Date(Date.now() - 80 * 60000).toISOString(),
+        },
+        {
+          sys_id: "mock-003",
+          patient_name: "Pooja Patel",
+          patient_age: "8",
+          gender: "Female",
+          phone_number: "+91 77777 88888",
+          condition_type: "Serious",
+          bed_number: "PED-03",
+          nurse_diagnosis: "",
+          nurse_notes: "",
+          ai_analysis: "",
+          sys_created_on: new Date(Date.now() - 2 * 3600000).toISOString(),
+        },
+      ],
+    };
+  }
+  try {
+    const r = await snGetPatientAdmissions(cfg);
+    return { source: "servicenow" as const, admissions: r.result ?? [] };
+  } catch (e) {
+    return { source: "mock" as const, error: (e as Error).message, admissions: [] };
+  }
+});
+
+// ─── Patient Admission — nurse condition update ───────────────────────────────
+// PATCHes nurse_diagnosis + nurse_notes onto the record.
+// The ServiceNow Business Rule / Script Include detects this and calls the AI,
+// writing the result back into ai_analysis on the same record.
+export const updatePatientCondition = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({
+      sysId:          z.string().min(1, "Record sys_id is required"),
+      nurseDiagnosis: z.string().min(1, "Diagnosis is required"),
+      nurseNotes:     z.string().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { getSnConfig, snUpdatePatientCondition } = await import("./servicenow.server");
+    const cfg = getSnConfig();
+    if (!cfg) {
+      // Mock: echo back so UI can optimistically update
+      return {
+        ok: true,
+        source: "mock" as const,
+        sysId: data.sysId,
+        nurseDiagnosis: data.nurseDiagnosis,
+        nurseNotes: data.nurseNotes ?? "",
+      };
+    }
+    const r = await snUpdatePatientCondition(cfg, data.sysId, {
+      nurse_diagnosis: data.nurseDiagnosis,
+      nurse_notes:     data.nurseNotes ?? "",
+    });
+    return { ok: true, source: "servicenow" as const, sysId: data.sysId, data: r };
+  });
+
+// ─── AI Analysis — fetch from ServiceNow ─────────────────────────────────────
+// Reads back the ai_analysis field for all admissions that already have it.
+// Used by the /ai-analysis route to display the AI predictions panel.
+export const getAiAnalysis = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSnConfig, snGetPatientAdmissions } = await import("./servicenow.server");
+  const cfg = getSnConfig();
+
+  if (!cfg) {
+    return {
+      source: "mock" as const,
+      records: [
+        {
+          sys_id: "mock-002",
+          patient_name: "Mahesh Kumar",
+          condition_type: "Stable",
+          bed_number: "GW-05",
+          nurse_diagnosis: "Hypertension with mild oedema",
+          ai_analysis: "Estimated bed occupancy: 4–5 days. Recommend daily BP monitoring and low-sodium diet. Discharge likely by Day 5 if BP stabilises.",
+          sys_created_on: new Date(Date.now() - 80 * 60000).toISOString(),
+        },
+        {
+          sys_id: "mock-ai-2",
+          patient_name: "Vikram Singh",
+          condition_type: "Emergency",
+          bed_number: "ICU-1B",
+          nurse_diagnosis: "Acute myocardial infarction post-angioplasty",
+          ai_analysis: "High-risk patient. Estimated ICU stay: 7–10 days. Bed will remain occupied until cardiac markers normalise. Recommend daily echo follow-up.",
+          sys_created_on: new Date(Date.now() - 3 * 3600000).toISOString(),
+        },
+      ],
+    };
+  }
+
+  try {
+    const r = await snGetPatientAdmissions(cfg);
+    // Only surface records that have an ai_analysis
+    const records = (r.result ?? []).filter((row) => row.ai_analysis && row.ai_analysis.trim() !== "");
+    return { source: "servicenow" as const, records };
+  } catch (e) {
+    return { source: "mock" as const, error: (e as Error).message, records: [] };
+  }
+});

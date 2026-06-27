@@ -20,6 +20,7 @@ import { Route as DischargesRouteImport } from './routes/discharges'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BedsRouteImport } from './routes/beds'
 import { Route as AssetsRouteImport } from './routes/assets'
+import { Route as AiAnalysisRouteImport } from './routes/ai-analysis'
 import { Route as AdmissionsRouteImport } from './routes/admissions'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -78,6 +79,11 @@ const AssetsRoute = AssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiAnalysisRoute = AiAnalysisRouteImport.update({
+  id: '/ai-analysis',
+  path: '/ai-analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdmissionsRoute = AdmissionsRouteImport.update({
   id: '/admissions',
   path: '/admissions',
@@ -92,6 +98,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admissions': typeof AdmissionsRoute
+  '/ai-analysis': typeof AiAnalysisRoute
   '/assets': typeof AssetsRoute
   '/beds': typeof BedsRoute
   '/dashboard': typeof DashboardRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admissions': typeof AdmissionsRoute
+  '/ai-analysis': typeof AiAnalysisRoute
   '/assets': typeof AssetsRoute
   '/beds': typeof BedsRoute
   '/dashboard': typeof DashboardRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admissions': typeof AdmissionsRoute
+  '/ai-analysis': typeof AiAnalysisRoute
   '/assets': typeof AssetsRoute
   '/beds': typeof BedsRoute
   '/dashboard': typeof DashboardRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admissions'
+    | '/ai-analysis'
     | '/assets'
     | '/beds'
     | '/dashboard'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admissions'
+    | '/ai-analysis'
     | '/assets'
     | '/beds'
     | '/dashboard'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admissions'
+    | '/ai-analysis'
     | '/assets'
     | '/beds'
     | '/dashboard'
@@ -186,6 +198,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdmissionsRoute: typeof AdmissionsRoute
+  AiAnalysisRoute: typeof AiAnalysisRoute
   AssetsRoute: typeof AssetsRoute
   BedsRoute: typeof BedsRoute
   DashboardRoute: typeof DashboardRoute
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssetsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ai-analysis': {
+      id: '/ai-analysis'
+      path: '/ai-analysis'
+      fullPath: '/ai-analysis'
+      preLoaderRoute: typeof AiAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admissions': {
       id: '/admissions'
       path: '/admissions'
@@ -298,6 +318,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdmissionsRoute: AdmissionsRoute,
+  AiAnalysisRoute: AiAnalysisRoute,
   AssetsRoute: AssetsRoute,
   BedsRoute: BedsRoute,
   DashboardRoute: DashboardRoute,

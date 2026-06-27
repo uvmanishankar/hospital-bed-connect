@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ChevronDown,
   ListChecks,
+  BrainCircuit,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Logo } from "./Logo";
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { to: "/assets", label: "Assets & Equipment", icon: Boxes },
   { to: "/staff", label: "Staff Availability", icon: Users },
   { to: "/reports", label: "Reports & Analytics", icon: FileText },
+  { to: "/ai-analysis", label: "AI Analysis", icon: BrainCircuit },
   { to: "/notifications", label: "Notifications", icon: Bell, badge: 5 },
   { to: "/tasks", label: "My Tasks", icon: ListChecks },
   { to: "/settings", label: "Settings", icon: Settings },
