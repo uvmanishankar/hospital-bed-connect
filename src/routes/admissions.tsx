@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
-import { ClipboardList, Plus, RefreshCw, Stethoscope, X, ChevronDown, ChevronUp } from "lucide-react";
+import { ClipboardList, Plus, RefreshCw, Stethoscope, X, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, StatCard } from "@/components/AppShell";
 import {
@@ -18,12 +18,13 @@ export const Route = createFileRoute("/admissions")({
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PatientRecord {
   sys_id: string;
+  number: string;
   patient_name: string;
   patient_age: string;
   gender: string;
   phone_number: string;
   condition_type: string;
-  bed_number: string;
+  assigned_bed: string;
   nurse_diagnosis: string;
   nurse_notes: string;
   ai_analysis: string;
@@ -31,11 +32,12 @@ interface PatientRecord {
 }
 
 const CONDITION_COLORS: Record<string, string> = {
-  Critical:  "bg-red-100 text-red-800",
-  Emergency: "bg-orange-100 text-orange-800",
-  Serious:   "bg-amber-100 text-amber-800",
-  Stable:    "bg-green-100 text-green-800",
-  Minor:     "bg-blue-100 text-blue-800",
+  General:    "bg-blue-100 text-blue-800",
+  Emergency:  "bg-orange-100 text-orange-800",
+  ICU:        "bg-red-100 text-red-800",
+  Maternity:  "bg-pink-100 text-pink-800",
+  Paediatric: "bg-purple-100 text-purple-800",
+  Isolation:  "bg-amber-100 text-amber-800",
 };
 
 function timeAgo(iso: string) {
@@ -102,7 +104,7 @@ function NurseUpdateDrawer({
               Update condition
             </h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              {patient.patient_name} · Bed {patient.bed_number || "—"}
+              {patient.patient_name} · Bed {patient.assigned_bed || "—"}
             </p>
           </div>
           <button
@@ -213,6 +215,7 @@ function PatientRow({
   return (
     <>
       <tr className="border-b border-gray-100 hover:bg-gray-50 transition">
+        <td className="py-3 px-3 text-xs font-mono text-primary font-semibold">{record.number || "—"}</td>
         <td className="py-3 px-3 font-semibold text-sm text-gray-800">{record.patient_name}</td>
         <td className="py-3 px-3 text-sm text-gray-600">{record.patient_age}y · {record.gender}</td>
         <td className="py-3 px-3">
@@ -225,9 +228,12 @@ function PatientRow({
           </span>
         </td>
         <td className="py-3 px-3 text-sm font-mono text-gray-700">
-          {record.bed_number || <span className="text-amber-600 text-xs font-semibold">Pending</span>}
+          {record.assigned_bed || <span className="text-amber-600 text-xs font-semibold">Pending</span>}
         </td>
-        <td className="py-3 px-3 text-xs text-gray-500">{timeAgo(record.sys_created_on)}</td>
+        <td className="py-3 px-3 text-xs text-gray-500">
+          <div>{new Date(record.sys_created_on).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+          <div className="text-gray-400">{new Date(record.sys_created_on).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
+        </td>
         <td className="py-3 px-3">
           <div className="flex items-center gap-2">
             {/* Status badges */}
@@ -264,7 +270,7 @@ function PatientRow({
       {/* Expanded detail row */}
       {expanded && (
         <tr className="bg-gray-50 border-b border-gray-100">
-          <td colSpan={6} className="px-4 py-3 space-y-2">
+          <td colSpan={7} className="px-4 py-3 space-y-2">
             {hasDiagnosis && (
               <div>
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Diagnosis: </span>
@@ -298,7 +304,7 @@ function AdmissionsPage() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [contactNumber, setContactNumber] = useState("");
-  const [bloodGroup, setBloodGroup] = useState("Unknown");
+  const [bloodGroup, setBloodGroup] = useState("");
   const [emergencyContact, setEmergencyContact] = useState("");
   const [referredBy, setReferredBy] = useState("");
   const [insurance, setInsurance] = useState("");
@@ -312,6 +318,11 @@ function AdmissionsPage() {
   const [firstHospFetch, setFirstHospFetch] = useState(false);
   const referredRef = useRef<HTMLInputElement | null>(null);
   const blurTimer = useRef<number | null>(null);
+
+  // ── Filter state ──
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterCondition, setFilterCondition] = useState("");
+  const [filterStatus, setFilterStatus] = useState(""); // "pending" | "assigned" | "diagnosed" | "ai"
 
   // ── Nurse update drawer ──
   const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
@@ -330,17 +341,61 @@ function AdmissionsPage() {
     refetchInterval: 30_000, // poll every 30s so bed assignments appear automatically
   });
 
-  const admissions: PatientRecord[] = ((admissionsData as { admissions?: PatientRecord[] })?.admissions ?? []).map(
-    (r) => ({
-      ...r,
-      ...(localOverrides[r.sys_id] ?? {}),
-    }),
+  // Helper: ServiceNow reference fields can come back as objects {value, display_value}
+  // or plain strings. Always extract a safe string.
+  function snStr(val: unknown): string {
+    if (!val) return "";
+    if (typeof val === "string") return val;
+    if (typeof val === "object") {
+      const o = val as Record<string, unknown>;
+      return String(o.display_value ?? o.value ?? "");
+    }
+    return String(val);
+  }
+
+  const admissions: PatientRecord[] = ((admissionsData as { admissions?: unknown[] })?.admissions ?? []).map(
+    (raw) => {
+      const r = raw as Record<string, unknown>;
+      return {
+        sys_id:          snStr(r.sys_id),
+        number:          snStr(r.number),
+        patient_name:    snStr(r.patient_name),
+        patient_age:     snStr(r.patient_age),
+        gender:          snStr(r.gender),
+        phone_number:    snStr(r.phone_number),
+        condition_type:  snStr(r.condition_type),
+        assigned_bed:    snStr(r.assigned_bed),
+        nurse_diagnosis: snStr(localOverrides[snStr(r.sys_id)]?.nurse_diagnosis ?? r.nurse_diagnosis),
+        nurse_notes:     snStr(localOverrides[snStr(r.sys_id)]?.nurse_notes ?? r.nurse_notes),
+        ai_analysis:     snStr(r.ai_analysis),
+        sys_created_on:  snStr(r.sys_created_on),
+      } satisfies PatientRecord;
+    },
   );
 
-  const pending   = admissions.filter((r) => !r.bed_number || r.bed_number.trim() === "");
-  const approved  = admissions.filter((r) => !!r.bed_number && !r.nurse_diagnosis);
+  const pending   = admissions.filter((r) => !r.assigned_bed || r.assigned_bed.trim() === "");
+  const approved  = admissions.filter((r) => !!r.assigned_bed && !r.nurse_diagnosis);
   const diagnosed = admissions.filter((r) => !!r.nurse_diagnosis);
   const withAI    = admissions.filter((r) => !!r.ai_analysis);
+
+  // ── Apply filters ──
+  const filteredAdmissions = admissions.filter((r) => {
+    if (filterSearch.trim()) {
+      const q = filterSearch.toLowerCase();
+      const matches =
+        r.patient_name.toLowerCase().includes(q) ||
+        r.number?.toLowerCase().includes(q) ||
+        r.assigned_bed?.toLowerCase().includes(q) ||
+        r.phone_number?.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    if (filterCondition && r.condition_type !== filterCondition) return false;
+    if (filterStatus === "pending"   && (!!r.assigned_bed && r.assigned_bed.trim() !== "")) return false;
+    if (filterStatus === "assigned"  && (!r.assigned_bed || !!r.nurse_diagnosis)) return false;
+    if (filterStatus === "diagnosed" && !r.nurse_diagnosis) return false;
+    if (filterStatus === "ai"        && !r.ai_analysis) return false;
+    return true;
+  });
 
   // ── Hospital autocomplete ──
   const filteredHospitals = allHospitals
@@ -430,16 +485,18 @@ out tags center qt 1000;
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["patientAdmissions"] });
       setOpen(false);
-      setName(""); setAge(""); setGender(""); setContactNumber(""); setBloodGroup("Unknown");
+      setName(""); setAge(""); setGender(""); setContactNumber(""); setBloodGroup("");
       setEmergencyContact(""); setReferredBy(""); setInsurance(""); setAddress(""); setConditionType("");
 
       if ((result as { source?: string }).source === "servicenow") {
+        const patNum = (result as { patientNumber?: string }).patientNumber;
         toast.success("Admission submitted to ServiceNow", {
-          description: `Sys ID: ${(result as { sysId?: string }).sysId ?? "unknown"}. The Business Rule will auto-assign a bed.`,
+          description: `Patient ID: ${patNum || "assigned by ServiceNow"}. The Business Rule will auto-assign a bed.`,
         });
       } else {
+        const patNum = (result as { patientNumber?: string }).patientNumber ?? "PAT0001";
         toast.info("Saved in mock mode", {
-          description: "ServiceNow env vars not set — record was not sent.",
+          description: `Patient ID: ${patNum} — ServiceNow env vars not set.`,
         });
       }
     },
@@ -472,44 +529,118 @@ out tags center qt 1000;
         </div>
       }
     >
-      {/* Stat cards */}
+      {/* Stat cards — click to quick-filter */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Pending Bed"   value={pending.length}   icon={ClipboardList} tone="warning" />
-        <StatCard label="Bed Assigned"  value={approved.length}  icon={ClipboardList} tone="success" />
-        <StatCard label="Diagnosed"     value={diagnosed.length} icon={ClipboardList} tone="primary" />
-        <StatCard label="AI Analysed"   value={withAI.length}    icon={ClipboardList} tone="accent"  />
+        {(
+          [
+            { label: "Pending Bed",  value: pending.length,   tone: "warning", key: "pending",   sublabel: "Awaiting bed assignment" },
+            { label: "Bed Assigned", value: approved.length,  tone: "success", key: "assigned",  sublabel: "Bed assigned, awaiting diagnosis" },
+            { label: "Diagnosed",    value: diagnosed.length, tone: "primary", key: "diagnosed", sublabel: "Doctor diagnosis recorded" },
+            { label: "AI Analysed",  value: withAI.length,    tone: "accent",  key: "ai",        sublabel: "AI analysis complete" },
+          ] as Array<{ label: string; value: number; tone: "warning"|"success"|"primary"|"accent"; key: string; sublabel: string }>
+        ).map(({ label, value, tone, key, sublabel }) => (
+          <div
+            key={key}
+            onClick={() => setFilterStatus((prev) => prev === key ? "" : key)}
+            className={`cursor-pointer rounded-2xl transition ring-2 ${filterStatus === key ? "ring-primary scale-[1.02]" : "ring-transparent"}`}
+          >
+            <StatCard
+              label={label}
+              value={admissionsFetching && admissions.length === 0 ? "…" : value}
+              icon={ClipboardList}
+              tone={tone}
+              sublabel={sublabel}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Live patient list */}
       <div className="mt-6 bg-card border border-border rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-secondary">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h3 className="font-semibold text-secondary flex items-center gap-2">
             Patient Admissions
             {(admissionsData as { source?: string })?.source === "mock" && (
-              <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">
-                MOCK DATA
-              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">MOCK DATA</span>
             )}
+            <span className="text-xs font-normal text-muted-foreground">
+              ({filteredAdmissions.length} of {admissions.length})
+            </span>
           </h3>
           <span className="text-xs text-muted-foreground">Auto-refreshes every 30s</span>
         </div>
 
-        {admissions.length === 0 ? (
+        {/* ── Filter bar ── */}
+        <div className="flex flex-wrap gap-2 mb-4 p-3 bg-muted/40 rounded-xl border border-border">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[180px]">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search name, ID, bed, phone…"
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="w-full h-8 pl-8 pr-3 text-xs border border-border rounded-lg bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+            />
+          </div>
+
+          {/* Condition type filter */}
+          <select
+            value={filterCondition}
+            onChange={(e) => setFilterCondition(e.target.value)}
+            className="h-8 px-2 text-xs border border-border rounded-lg bg-white focus:outline-none focus:border-primary"
+          >
+            <option value="">All Conditions</option>
+            <option value="General">General</option>
+            <option value="Emergency">Emergency</option>
+            <option value="ICU">ICU</option>
+            <option value="Maternity">Maternity</option>
+            <option value="Paediatric">Paediatric</option>
+            <option value="Isolation">Isolation</option>
+          </select>
+
+          {/* Status filter */}
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="h-8 px-2 text-xs border border-border rounded-lg bg-white focus:outline-none focus:border-primary"
+          >
+            <option value="">All Statuses</option>
+            <option value="pending">Pending Bed</option>
+            <option value="assigned">Bed Assigned</option>
+            <option value="diagnosed">Diagnosed</option>
+            <option value="ai">AI Analysed</option>
+          </select>
+
+          {/* Clear filters */}
+          {(filterSearch || filterCondition || filterStatus) && (
+            <button
+              onClick={() => { setFilterSearch(""); setFilterCondition(""); setFilterStatus(""); }}
+              className="h-8 px-3 text-xs font-medium rounded-lg border border-border bg-white text-muted-foreground hover:text-destructive hover:border-destructive transition"
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+
+        {filteredAdmissions.length === 0 ? (
           <div className="text-center py-10 text-muted-foreground text-sm">
-            No admissions found. Submit a new admission above.
+            {admissions.length === 0
+              ? "No admissions found. Submit a new admission above."
+              : "No admissions match the current filters."}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground border-b border-border">
                 <tr>
-                  {["Patient", "Age / Gender", "Condition", "Bed", "Admitted", "Actions"].map((h) => (
+                  {["Patient ID", "Patient", "Age / Gender", "Condition", "Bed", "Admitted", "Actions"].map((h) => (
                     <th key={h} className="text-left py-2 px-3 font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {admissions.map((record) => (
+                {filteredAdmissions.map((record) => (
                   <PatientRow
                     key={record.sys_id}
                     record={record}
@@ -583,23 +714,37 @@ out tags center qt 1000;
                 </div>
                 <div className="group">
                   <label>Contact Number<span className="req">*</span></label>
-                  <input value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} placeholder="+91 98765 43210" required />
+                  <input
+                    value={contactNumber}
+                    onChange={(e) => {
+                      // only digits, max 10
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setContactNumber(val);
+                    }}
+                    placeholder="10-digit mobile number"
+                    pattern="[0-9]{10}"
+                    title="Enter a valid 10-digit mobile number"
+                    maxLength={10}
+                    inputMode="numeric"
+                    required
+                  />
                 </div>
                 <div className="group">
                   <label>Condition Type<span className="req">*</span></label>
                   <select value={conditionType} onChange={(e) => setConditionType(e.target.value)} required>
                     <option value="">Select condition type</option>
-                    <option value="Critical">Critical</option>
+                    <option value="General">General</option>
                     <option value="Emergency">Emergency</option>
-                    <option value="Serious">Serious</option>
-                    <option value="Stable">Stable</option>
-                    <option value="Minor">Minor</option>
+                    <option value="ICU">ICU</option>
+                    <option value="Maternity">Maternity</option>
+                    <option value="Paediatric">Paediatric</option>
+                    <option value="Isolation">Isolation</option>
                   </select>
                 </div>
                 <div className="group">
-                  <label>Blood Group</label>
-                  <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}>
-                    <option>Unknown</option>
+                  <label>Blood Group<span className="req">*</span></label>
+                  <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} required>
+                    <option value="">Select blood group</option>
                     <option>A+</option><option>A-</option>
                     <option>B+</option><option>B-</option>
                     <option>AB+</option><option>AB-</option>

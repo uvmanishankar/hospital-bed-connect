@@ -123,14 +123,16 @@ export async function snGetPatientAdmissions(cfg: SNConfig) {
   return snFetch<{ result: SNRow[] }>(cfg, "x_1811536_hospit_0_patient_admission", {
     query: {
       sysparm_limit: "100",
+      sysparm_display_value: "true",
       sysparm_fields: [
         "sys_id",
+        "number",
         "patient_name",
         "patient_age",
         "gender",
         "phone_number",
         "condition_type",
-        "bed_number",
+        "assigned_bed",
         "nurse_diagnosis",
         "nurse_notes",
         "ai_analysis",

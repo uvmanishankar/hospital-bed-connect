@@ -153,9 +153,9 @@ export const createPatientAdmission = createServerFn({ method: "POST" })
     if (data.address)            payload.address             = data.address;
     if (data.conditionType)      payload.condition_type      = data.conditionType;
 
-    if (!cfg) return { ok: true, source: "mock" as const, sysId: "mock-id", payload };
+    if (!cfg) return { ok: true, source: "mock" as const, sysId: "mock-id", patientNumber: "PAT0001", payload };
     const r = await snCreatePatientAdmission(cfg, payload);
-    return { ok: true, source: "servicenow" as const, sysId: r.result?.sys_id ?? "", data: r };
+    return { ok: true, source: "servicenow" as const, sysId: r.result?.sys_id ?? "", patientNumber: r.result?.number ?? "", data: r };
   });
 
 // ─── Patient Admission — list (for nurse's Admissions page) ──────────────────
@@ -171,12 +171,13 @@ export const getPatientAdmissions = createServerFn({ method: "GET" }).handler(as
       admissions: [
         {
           sys_id: "mock-001",
+          number: "PAD0001001",
           patient_name: "Anita Roy",
           patient_age: "34",
           gender: "Female",
           phone_number: "+91 98765 43210",
-          condition_type: "Critical",
-          bed_number: "ICU-2A",
+          condition_type: "Emergency",
+          assigned_bed: "ICU-2A",
           nurse_diagnosis: "",
           nurse_notes: "",
           ai_analysis: "",
@@ -184,12 +185,13 @@ export const getPatientAdmissions = createServerFn({ method: "GET" }).handler(as
         },
         {
           sys_id: "mock-002",
+          number: "PAD0001002",
           patient_name: "Mahesh Kumar",
           patient_age: "58",
           gender: "Male",
           phone_number: "+91 98765 11111",
-          condition_type: "Stable",
-          bed_number: "GW-05",
+          condition_type: "General",
+          assigned_bed: "GW-05",
           nurse_diagnosis: "Hypertension with mild oedema",
           nurse_notes: "BP monitored every 2h",
           ai_analysis: "Estimated bed occupancy: 4–5 days. Recommend daily BP monitoring and low-sodium diet. Discharge likely by Day 5 if BP stabilises.",
@@ -197,12 +199,13 @@ export const getPatientAdmissions = createServerFn({ method: "GET" }).handler(as
         },
         {
           sys_id: "mock-003",
+          number: "PAD0001003",
           patient_name: "Pooja Patel",
           patient_age: "8",
           gender: "Female",
           phone_number: "+91 77777 88888",
-          condition_type: "Serious",
-          bed_number: "PED-03",
+          condition_type: "Paediatric",
+          assigned_bed: "PED-03",
           nurse_diagnosis: "",
           nurse_notes: "",
           ai_analysis: "",
@@ -266,7 +269,7 @@ export const getAiAnalysis = createServerFn({ method: "GET" }).handler(async () 
           sys_id: "mock-002",
           patient_name: "Mahesh Kumar",
           condition_type: "Stable",
-          bed_number: "GW-05",
+          assigned_bed: "GW-05",
           nurse_diagnosis: "Hypertension with mild oedema",
           ai_analysis: "Estimated bed occupancy: 4–5 days. Recommend daily BP monitoring and low-sodium diet. Discharge likely by Day 5 if BP stabilises.",
           sys_created_on: new Date(Date.now() - 80 * 60000).toISOString(),
@@ -275,7 +278,7 @@ export const getAiAnalysis = createServerFn({ method: "GET" }).handler(async () 
           sys_id: "mock-ai-2",
           patient_name: "Vikram Singh",
           condition_type: "Emergency",
-          bed_number: "ICU-1B",
+          assigned_bed: "ICU-1B",
           nurse_diagnosis: "Acute myocardial infarction post-angioplasty",
           ai_analysis: "High-risk patient. Estimated ICU stay: 7–10 days. Bed will remain occupied until cardiac markers normalise. Recommend daily echo follow-up.",
           sys_created_on: new Date(Date.now() - 3 * 3600000).toISOString(),
