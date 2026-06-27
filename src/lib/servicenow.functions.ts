@@ -254,11 +254,11 @@ export const updatePatientCondition = createServerFn({ method: "POST" })
     return { ok: true, source: "servicenow" as const, sysId: data.sysId, data: r };
   });
 
-// ─── AI Analysis — fetch from ServiceNow ─────────────────────────────────────
-// Reads back the ai_analysis field for all admissions that already have it.
+// ─── AI Analysis — fetch from dedicated AI Prediction table ──────────────────
+// Reads from x_1811536_hospit_0_ai_prediction table written by the Business Rule.
 // Used by the /ai-analysis route to display the AI predictions panel.
 export const getAiAnalysis = createServerFn({ method: "GET" }).handler(async () => {
-  const { getSnConfig, snGetPatientAdmissions } = await import("./servicenow.server");
+  const { getSnConfig, snGetAiPredictions } = await import("./servicenow.server");
   const cfg = getSnConfig();
 
   if (!cfg) {
@@ -268,19 +268,29 @@ export const getAiAnalysis = createServerFn({ method: "GET" }).handler(async () 
         {
           sys_id: "mock-002",
           patient_name: "Mahesh Kumar",
+          patient_age: "58",
           condition_type: "Stable",
-          assigned_bed: "GW-05",
-          nurse_diagnosis: "Hypertension with mild oedema",
+          condition_notes: "Hypertension with mild oedema",
           ai_analysis: "Estimated bed occupancy: 4–5 days. Recommend daily BP monitoring and low-sodium diet. Discharge likely by Day 5 if BP stabilises.",
+          estimated_days_min: "4",
+          estimated_days_max: "5",
+          ai_model: "mistral-small-latest",
+          status: "completed",
+          prediction_date: new Date(Date.now() - 80 * 60000).toISOString(),
           sys_created_on: new Date(Date.now() - 80 * 60000).toISOString(),
         },
         {
           sys_id: "mock-ai-2",
           patient_name: "Vikram Singh",
+          patient_age: "62",
           condition_type: "Emergency",
-          assigned_bed: "ICU-1B",
-          nurse_diagnosis: "Acute myocardial infarction post-angioplasty",
+          condition_notes: "Acute myocardial infarction post-angioplasty",
           ai_analysis: "High-risk patient. Estimated ICU stay: 7–10 days. Bed will remain occupied until cardiac markers normalise. Recommend daily echo follow-up.",
+          estimated_days_min: "7",
+          estimated_days_max: "10",
+          ai_model: "mistral-small-latest",
+          status: "completed",
+          prediction_date: new Date(Date.now() - 3 * 3600000).toISOString(),
           sys_created_on: new Date(Date.now() - 3 * 3600000).toISOString(),
         },
       ],
@@ -288,11 +298,13 @@ export const getAiAnalysis = createServerFn({ method: "GET" }).handler(async () 
   }
 
   try {
-    const r = await snGetPatientAdmissions(cfg);
-    // Only surface records that have an ai_analysis
-    const records = (r.result ?? []).filter((row) => row.ai_analysis && row.ai_analysis.trim() !== "");
-    return { source: "servicenow" as const, records };
+    const r = await snGetAiPredictions(cfg);
+    return { source: "servicenow" as const, records: r.result ?? [] };
   } catch (e) {
     return { source: "mock" as const, error: (e as Error).message, records: [] };
   }
 });
+// ─── Alias for backward compatibility ────────────────────────────────────────
+// Some local versions of admissions.tsx import updateConditionNotes instead of
+// updatePatientCondition — this alias ensures both names work.
+export const updateConditionNotes = updatePatientCondition;

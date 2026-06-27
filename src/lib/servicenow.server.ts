@@ -145,6 +145,38 @@ export async function snGetPatientAdmissions(cfg: SNConfig) {
 }
 
 /**
+ * GET all AI Predictions from the dedicated AI Prediction table.
+ * Table: x_1811536_hospit_0_ai_prediction
+ */
+export async function snGetAiPredictions(cfg: SNConfig) {
+  return snFetch<{ result: SNRow[] }>(cfg, "x_1811536_hospit_0_ai_prediction", {
+    query: {
+      sysparm_limit: "100",
+      sysparm_display_value: "true",
+      sysparm_fields: [
+        "sys_id",
+        "number",
+        "patient_name",
+        "patient_age",
+        "condition_type",
+        "condition_notes",
+        "ai_analysis",
+        "ai_model",
+        "estimated_days_min",
+        "estimated_days_max",
+        "status",
+        "active",
+        "prediction_date",
+        "sys_created_on",
+      ].join(","),
+      sysparm_orderby: "sys_created_on",
+      sysparm_order_direction: "desc",
+      sysparm_query: "status=completed^active=true",
+    },
+  });
+}
+
+/**
  * PATCH a single patient admission to record the nurse's post-diagnosis update.
  * The Business Rule / Script Include on the ServiceNow side will detect that
  * nurse_diagnosis is now populated and trigger the AI analysis call, writing

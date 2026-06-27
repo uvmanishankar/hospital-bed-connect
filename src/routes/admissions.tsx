@@ -7,7 +7,7 @@ import { AppShell, StatCard } from "@/components/AppShell";
 import {
   createPatientAdmission,
   getPatientAdmissions,
-  updatePatientCondition,
+  updateConditionNotes,
 } from "@/lib/servicenow.functions";
 
 export const Route = createFileRoute("/admissions")({
@@ -25,8 +25,7 @@ interface PatientRecord {
   phone_number: string;
   condition_type: string;
   assigned_bed: string;
-  nurse_diagnosis: string;
-  nurse_notes: string;
+  condition_notes: string;
   ai_analysis: string;
   sys_created_on: string;
 }
@@ -51,6 +50,12 @@ function timeAgo(iso: string) {
 }
 
 // ─── Nurse Update Drawer ──────────────────────────────────────────────────────
+// ─── Condition Notes Drawer ───────────────────────────────────────────────────
+// The nurse fills "Condition notes" after the doctor examination.
+// Saving this PATCHes only `condition_notes` to ServiceNow.
+// The Business Rule watches for condition_notes becoming non-blank, then calls
+// the "Mistral AI API" REST Message with condition_notes + condition_type, and
+// writes the AI response back into ai_analysis on the same record.
 function NurseUpdateDrawer({
   patient,
   onClose,
@@ -58,30 +63,29 @@ function NurseUpdateDrawer({
 }: {
   patient: PatientRecord;
   onClose: () => void;
-  onSaved: (sysId: string, diagnosis: string, notes: string) => void;
+  onSaved: (sysId: string, conditionNotes: string) => void;
 }) {
-  const [diagnosis, setDiagnosis] = useState(patient.nurse_diagnosis ?? "");
-  const [notes, setNotes] = useState(patient.nurse_notes ?? "");
+  const [conditionNotes, setConditionNotes] = useState(patient.condition_notes ?? "");
 
   const mutation = useMutation({
-    mutationFn: (input: { sysId: string; nurseDiagnosis: string; nurseNotes: string }) =>
-      updatePatientCondition({ data: input }),
+    mutationFn: (input: { sysId: string; conditionNotes: string }) =>
+      updateConditionNotes({ data: input }),
     onSuccess: (result) => {
       const src = (result as { source?: string }).source;
       if (src === "servicenow") {
-        toast.success("Condition updated", {
-          description: "ServiceNow will now trigger AI analysis on this record.",
+        toast.success("Condition notes saved", {
+          description: "ServiceNow Business Rule will call Mistral AI and write the analysis back.",
         });
       } else {
         toast.info("Saved (mock mode)", {
           description: "ServiceNow env vars not set — record was not sent.",
         });
       }
-      onSaved(patient.sys_id, diagnosis, notes);
+      onSaved(patient.sys_id, conditionNotes);
       onClose();
     },
     onError: (err: unknown) => {
-      toast.error("Update failed", {
+      toast.error("Save failed", {
         description: err instanceof Error ? err.message : "Unknown error from ServiceNow.",
       });
     },
@@ -101,30 +105,27 @@ function NurseUpdateDrawer({
           <div>
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Stethoscope size={18} className="text-primary" />
-              Update condition
+              Update condition notes
             </h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              {patient.patient_name} · Bed {patient.assigned_bed || "—"}
+              {patient.number} · {patient.patient_name} · Bed {patient.assigned_bed || "—"}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
             <X size={18} />
           </button>
         </div>
 
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
-          {/* Read-only patient info */}
+          {/* Read-only patient summary */}
           <div className="grid grid-cols-3 gap-3 text-sm">
             <div className="bg-gray-50 rounded-lg p-3">
               <div className="text-xs text-gray-500">Age / Gender</div>
               <div className="font-medium mt-0.5">{patient.patient_age}y · {patient.gender}</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-xs text-gray-500">Condition</div>
+              <div className="text-xs text-gray-500">Condition type</div>
               <div className="font-medium mt-0.5">{patient.condition_type}</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
@@ -133,42 +134,32 @@ function NurseUpdateDrawer({
             </div>
           </div>
 
-          {/* Doctor's diagnosis (filled after examination) */}
+          {/* Condition notes — the single field sent to ServiceNow */}
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              Doctor's diagnosis <span className="text-red-500">*</span>
+              Condition notes <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={diagnosis}
-              onChange={(e) => setDiagnosis(e.target.value)}
-              placeholder="e.g. Acute appendicitis — post laparoscopic repair"
-              className="w-full h-10 border border-gray-200 rounded-xl px-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            <textarea
+              value={conditionNotes}
+              onChange={(e) => setConditionNotes(e.target.value)}
+              rows={5}
+              placeholder="Enter diagnosis, vitals, medications administered, patient response, and any observations after doctor examination…"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
             />
-            <p className="text-xs text-gray-400 mt-1">
-              Enter the confirmed diagnosis after doctor examination.
+            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0"></span>
+              Saving this will automatically trigger Mistral AI analysis via ServiceNow Business Rule.
             </p>
           </div>
 
-          {/* Nurse observations */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-              Nurse observations / notes
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Vitals, medication administered, patient response…"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
-            />
-          </div>
-
-          {/* Existing AI analysis if available */}
+          {/* Show existing AI analysis if already available */}
           {patient.ai_analysis && (
             <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-              <div className="text-xs font-semibold text-purple-700 mb-1">AI Analysis (from ServiceNow)</div>
-              <p className="text-sm text-purple-900">{patient.ai_analysis}</p>
+              <div className="text-xs font-semibold text-purple-700 mb-1.5 flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0"></span>
+                AI Analysis (written by ServiceNow · Mistral AI API)
+              </div>
+              <p className="text-sm text-purple-900 leading-relaxed">{patient.ai_analysis}</p>
             </div>
           )}
         </div>
@@ -182,14 +173,8 @@ function NurseUpdateDrawer({
             Cancel
           </button>
           <button
-            disabled={mutation.isPending || !diagnosis.trim()}
-            onClick={() =>
-              mutation.mutate({
-                sysId: patient.sys_id,
-                nurseDiagnosis: diagnosis,
-                nurseNotes: notes,
-              })
-            }
+            disabled={mutation.isPending || !conditionNotes.trim()}
+            onClick={() => mutation.mutate({ sysId: patient.sys_id, conditionNotes })}
             className="px-5 py-2 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {mutation.isPending ? "Saving…" : "Save & trigger AI"}
@@ -209,7 +194,7 @@ function PatientRow({
   onUpdateClick: (r: PatientRecord) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const hasDiagnosis = !!record.nurse_diagnosis?.trim();
+  const hasNotes = !!record.condition_notes?.trim();
   const hasAI = !!record.ai_analysis?.trim();
 
   return (
@@ -237,7 +222,7 @@ function PatientRow({
         <td className="py-3 px-3">
           <div className="flex items-center gap-2">
             {/* Status badges */}
-            {hasDiagnosis && (
+            {hasNotes && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">
                 Diagnosed
               </span>
@@ -248,7 +233,7 @@ function PatientRow({
               </span>
             )}
             {/* Expand/collapse AI analysis */}
-            {(hasDiagnosis || hasAI) && (
+            {(hasNotes || hasAI) && (
               <button
                 onClick={() => setExpanded((v) => !v)}
                 className="p-1 rounded hover:bg-gray-100 text-gray-400"
@@ -271,16 +256,10 @@ function PatientRow({
       {expanded && (
         <tr className="bg-gray-50 border-b border-gray-100">
           <td colSpan={7} className="px-4 py-3 space-y-2">
-            {hasDiagnosis && (
+            {hasNotes && (
               <div>
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Diagnosis: </span>
-                <span className="text-sm text-gray-800">{record.nurse_diagnosis}</span>
-              </div>
-            )}
-            {record.nurse_notes && (
-              <div>
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nurse notes: </span>
-                <span className="text-sm text-gray-700">{record.nurse_notes}</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Condition notes: </span>
+                <span className="text-sm text-gray-800">{record.condition_notes}</span>
               </div>
             )}
             {hasAI && (
@@ -329,7 +308,7 @@ function AdmissionsPage() {
 
   // ── Optimistic local overrides for the list (before next refetch) ──
   const [localOverrides, setLocalOverrides] = useState<
-    Record<string, { nurse_diagnosis: string; nurse_notes: string }>
+    Record<string, { condition_notes: string }>
   >({});
 
   const qc = useQueryClient();
@@ -365,8 +344,7 @@ function AdmissionsPage() {
         phone_number:    snStr(r.phone_number),
         condition_type:  snStr(r.condition_type),
         assigned_bed:    snStr(r.assigned_bed),
-        nurse_diagnosis: snStr(localOverrides[snStr(r.sys_id)]?.nurse_diagnosis ?? r.nurse_diagnosis),
-        nurse_notes:     snStr(localOverrides[snStr(r.sys_id)]?.nurse_notes ?? r.nurse_notes),
+        condition_notes: snStr(localOverrides[snStr(r.sys_id)]?.condition_notes ?? r.condition_notes),
         ai_analysis:     snStr(r.ai_analysis),
         sys_created_on:  snStr(r.sys_created_on),
       } satisfies PatientRecord;
@@ -374,8 +352,8 @@ function AdmissionsPage() {
   );
 
   const pending   = admissions.filter((r) => !r.assigned_bed || r.assigned_bed.trim() === "");
-  const approved  = admissions.filter((r) => !!r.assigned_bed && !r.nurse_diagnosis);
-  const diagnosed = admissions.filter((r) => !!r.nurse_diagnosis);
+  const approved  = admissions.filter((r) => !!r.assigned_bed && !r.condition_notes);
+  const diagnosed = admissions.filter((r) => !!r.condition_notes);
   const withAI    = admissions.filter((r) => !!r.ai_analysis);
 
   // ── Apply filters ──
@@ -391,8 +369,8 @@ function AdmissionsPage() {
     }
     if (filterCondition && r.condition_type !== filterCondition) return false;
     if (filterStatus === "pending"   && (!!r.assigned_bed && r.assigned_bed.trim() !== "")) return false;
-    if (filterStatus === "assigned"  && (!r.assigned_bed || !!r.nurse_diagnosis)) return false;
-    if (filterStatus === "diagnosed" && !r.nurse_diagnosis) return false;
+    if (filterStatus === "assigned"  && (!r.assigned_bed || !!r.condition_notes)) return false;
+    if (filterStatus === "diagnosed" && !r.condition_notes) return false;
     if (filterStatus === "ai"        && !r.ai_analysis) return false;
     return true;
   });
@@ -658,10 +636,10 @@ out tags center qt 1000;
         <NurseUpdateDrawer
           patient={selectedPatient}
           onClose={() => setSelectedPatient(null)}
-          onSaved={(sysId, diagnosis, notes) => {
+          onSaved={(sysId, conditionNotes) => {
             setLocalOverrides((prev) => ({
               ...prev,
-              [sysId]: { nurse_diagnosis: diagnosis, nurse_notes: notes },
+              [sysId]: { condition_notes: conditionNotes },
             }));
             // Refetch after a short delay to pick up AI analysis written by ServiceNow
             setTimeout(() => qc.invalidateQueries({ queryKey: ["patientAdmissions"] }), 5000);
