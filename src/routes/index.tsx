@@ -278,12 +278,12 @@ function Landing() {
               Our intuitive dashboard provides real-time insights into bed availability, equipment
               status, requests, and more.
             </p>
-            <Link
-              to="/dashboard"
+            <a
+              href="#dashboard"
               className="mt-6 inline-flex h-11 px-5 items-center gap-2 rounded-xl bg-primary text-primary-foreground font-semibold shadow-[var(--shadow-glow)] hover:opacity-95"
             >
               Explore Dashboard <ArrowRight size={16} />
-            </Link>
+            </a>
           </div>
           <DashboardMockup />
         </div>
@@ -429,17 +429,41 @@ function Landing() {
             </div>
           </div>
           {[
-            { t: "Product", l: ["Features", "Dashboard", "Pricing", "FAQs"] },
-            { t: "Resources", l: ["Documentation", "User Guide", "API Reference", "Support"] },
-            { t: "Company", l: ["About Us", "Contact Us", "Careers", "Privacy Policy"] },
+            {
+              t: "Product",
+              l: [
+                { label: "Features",  href: "#features" },
+                { label: "Dashboard", href: "#dashboard" },
+                { label: "Pricing",   href: "#" },
+                { label: "FAQs",      href: "#" },
+              ],
+            },
+            {
+              t: "Resources",
+              l: [
+                { label: "Documentation", href: "#" },
+                { label: "User Guide",    href: "#" },
+                { label: "API Reference", href: "#" },
+                { label: "Support",       href: "#contact" },
+              ],
+            },
+            {
+              t: "Company",
+              l: [
+                { label: "About Us",       href: "#about" },
+                { label: "Contact Us",     href: "#contact" },
+                { label: "Careers",        href: "#" },
+                { label: "Privacy Policy", href: "#" },
+              ],
+            },
           ].map((c) => (
             <div key={c.t}>
               <div className="font-semibold mb-3">{c.t}</div>
               <ul className="space-y-2 text-sm text-white/70">
                 {c.l.map((l) => (
-                  <li key={l}>
-                    <a href="#" className="hover:text-white">
-                      {l}
+                  <li key={l.label}>
+                    <a href={l.href} className="hover:text-white">
+                      {l.label}
                     </a>
                   </li>
                 ))}
