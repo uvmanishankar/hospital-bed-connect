@@ -117,13 +117,7 @@ function Landing() {
                 to="/login"
                 className="inline-flex h-12 px-6 items-center gap-2 rounded-xl bg-primary text-primary-foreground font-semibold shadow-[var(--shadow-glow)] hover:opacity-95"
               >
-                Get Started <ArrowRight size={18} />
-              </Link>
-              <Link
-                to="/dashboard"
-                className="inline-flex h-12 px-6 items-center gap-2 rounded-xl bg-white border border-primary text-primary font-semibold hover:bg-primary/5"
-              >
-                View Demo <Play size={16} />
+                Login to Dashboard <ArrowRight size={18} />
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-foreground/70">

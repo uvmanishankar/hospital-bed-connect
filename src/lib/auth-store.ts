@@ -1,24 +1,29 @@
-// Tiny mock auth store using localStorage; UI-only.
-import { useEffect, useState } from "react";
+// Real auth store — validates credentials against ServiceNow employee table.
+// Session stored in localStorage after successful login.
 
 const KEY = "hc_auth_v1";
 
-export interface MockUser {
+export interface AuthUser {
+  sys_id: string;
   name: string;
   email: string;
+  employee_id: string;
   role: string;
 }
 
-export const defaultUser: MockUser = {
-  name: "Dr. Priya Sharma",
-  email: "priya.sharma@hospitalcare.io",
-  role: "Ward Manager",
-};
+export function getUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    return null;
+  }
+}
 
-export function login(username: string) {
+export function saveUser(user: AuthUser) {
   if (typeof window === "undefined") return;
-  const u = { ...defaultUser, email: username || defaultUser.email };
-  localStorage.setItem(KEY, JSON.stringify(u));
+  localStorage.setItem(KEY, JSON.stringify(user));
 }
 
 export function logout() {
@@ -26,18 +31,21 @@ export function logout() {
   localStorage.removeItem(KEY);
 }
 
-export function getUser(): MockUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as MockUser) : null;
-  } catch {
-    return null;
-  }
+// Legacy alias used in some routes
+export function login(username: string) {
+  saveUser({
+    sys_id: "legacy",
+    name: username,
+    email: username,
+    employee_id: "",
+    role: "staff",
+  });
 }
 
+import { useEffect, useState } from "react";
+
 export function useAuth() {
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
     setUser(getUser());

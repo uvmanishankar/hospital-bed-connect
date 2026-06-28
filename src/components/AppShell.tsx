@@ -19,8 +19,11 @@ import {
   ChevronDown,
   ListChecks,
   BrainCircuit,
+  User,
+  BadgeCheck,
+  X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { Logo } from "./Logo";
 import { logout, useAuth } from "@/lib/auth-store";
 
@@ -60,8 +63,20 @@ export function AppShell({
   const { user } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const profileRef = useRef<HTMLDivElement>(null);
   const loc = useLocation();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -195,21 +210,70 @@ export function AppShell({
             >
               <HelpCircle size={18} />
             </button>
-            <div className="flex items-center gap-2.5 pl-2 sm:pl-3 sm:border-l border-border">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-white text-xs font-bold shrink-0">
-                {(user?.name ?? "PS")
-                  .split(" ")
-                  .map((s) => s[0])
-                  .slice(0, 2)
-                  .join("")}
-              </div>
-              <div className="hidden sm:block leading-tight">
-                <div className="text-sm font-semibold">{user?.name ?? "Dr. Priya Sharma"}</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {user?.role ?? "Ward Manager"}
+            <div className="relative flex items-center gap-2.5 pl-2 sm:pl-3 sm:border-l border-border" ref={profileRef}>
+              <button
+                onClick={() => setProfileOpen((p) => !p)}
+                className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-muted transition cursor-pointer"
+              >
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-white text-xs font-bold shrink-0">
+                  {(user?.name ?? "PS")
+                    .split(" ")
+                    .map((s) => s[0])
+                    .slice(0, 2)
+                    .join("")}
                 </div>
-              </div>
-              <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:inline" />
+                <div className="hidden sm:block leading-tight text-left">
+                  <div className="text-sm font-semibold">{user?.name ?? "Staff"}</div>
+                  <div className="text-[11px] text-muted-foreground">{user?.role ?? "nurse"}</div>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground hidden sm:inline transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Dropdown */}
+              {profileOpen && (
+                <div className="absolute right-0 top-12 w-64 bg-white rounded-2xl border border-border shadow-[var(--shadow-elevated)] z-50 overflow-hidden">
+                  {/* Profile header */}
+                  <div className="p-4 bg-gradient-to-br from-primary/10 to-accent/10 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-white font-bold text-sm">
+                        {(user?.name ?? "PS").split(" ").map((s) => s[0]).slice(0, 2).join("")}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-secondary">{user?.name ?? "Staff"}</div>
+                        <div className="text-xs text-muted-foreground">{user?.email ?? ""}</div>
+                        <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                          <BadgeCheck size={10} /> {user?.employee_id ?? ""}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Menu items */}
+                  <div className="p-2">
+                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground/80">
+                      <User size={15} className="text-muted-foreground" />
+                      <div>
+                        <div className="font-medium">Role</div>
+                        <div className="text-xs text-muted-foreground capitalize">{user?.role ?? "nurse"}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground/80">
+                      <ShieldCheck size={15} className="text-muted-foreground" />
+                      <div>
+                        <div className="font-medium">Employee ID</div>
+                        <div className="text-xs text-muted-foreground">{user?.employee_id ?? "—"}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-2 border-t border-border">
+                    <button
+                      onClick={() => { logout(); navigate({ to: "/login" }); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition font-medium"
+                    >
+                      <LogOut size={15} /> Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

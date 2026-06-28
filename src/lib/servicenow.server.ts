@@ -67,9 +67,34 @@ async function snFetch<T = unknown>(
 
 export type SNRow = Record<string, string>;
 
-// ─── Hospital beds ────────────────────────────────────────────────────────────
+// ─── Hospital beds — from bed_inventory scoped table ─────────────────────────
 export async function snGetBeds(cfg: SNConfig) {
-  return snFetch<{ result: SNRow[] }>(cfg, "u_hospital_bed", { query: { sysparm_limit: "200" } });
+  return snFetch<{ result: SNRow[] }>(cfg, "x_1811536_hospit_0_bed_inventory", {
+    query: {
+      sysparm_limit: "500",
+      sysparm_display_value: "true",
+      sysparm_fields: [
+        "sys_id",
+        "number",
+        "bed_number",
+        "ward",
+        "bed_type",
+        "status",
+        "patient_name",
+        "patient_id",
+        "age",
+        "gender",
+        "admitted_on",
+        "diagnosis",
+        "doctor",
+        "expected_discharge",
+        "rate_per_day",
+        "sys_created_on",
+        "sys_updated_on",
+      ].join(","),
+      sysparm_orderby: "ward",
+    },
+  });
 }
 export async function snCreateBed(cfg: SNConfig, body: Record<string, unknown>) {
   return snFetch<{ result: SNRow }>(cfg, "u_hospital_bed", { method: "POST", body });
@@ -196,4 +221,58 @@ export async function snUpdatePatientCondition(
     id: sysId,
     body,
   });
+}
+// ─── Employee Authentication ──────────────────────────────────────────────────
+// Looks up employee by number (e.g. EMPL1002) in the employee table,
+// then validates the plain-text password field.
+export async function snAuthenticateEmployee(
+  cfg: SNConfig,
+  employeeId: string,
+  password: string,
+) {
+  // Correct truncated table name (ServiceNow 26-char limit)
+  const tableNames = [
+    "x_1811536_hospit_0_emplo",
+  ];
+
+  let result: { result: SNRow[] } | null = null;
+  let lastError = "";
+
+  for (const tableName of tableNames) {
+    try {
+      result = await snFetch<{ result: SNRow[] }>(cfg, tableName, {
+        query: {
+          sysparm_query: `number=${employeeId}`,
+          sysparm_fields: "sys_id,number,first_name,last_name,role,email,password,active",
+          sysparm_limit: "1",
+          sysparm_display_value: "true",
+        },
+      });
+      if (result.result !== undefined) break; // found the right table
+    } catch (e) {
+      lastError = (e as Error).message;
+      result = null;
+    }
+  }
+
+  if (!result || !result.result) {
+    return { ok: false, error: "Could not find employee table. Error: " + lastError };
+  }
+
+  const employee = result.result?.[0];
+  if (!employee)                    return { ok: false, error: "Employee ID not found" };
+  if (employee.active === "false")  return { ok: false, error: "Account is inactive" };
+  if (employee.password !== password) return { ok: false, error: "Incorrect password" };
+
+  const { password: _pw, ...safeEmployee } = employee;
+  return {
+    ok: true,
+    employee: {
+      sys_id:      safeEmployee.sys_id,
+      name:        `${safeEmployee.first_name} ${safeEmployee.last_name}`.trim(),
+      email:       safeEmployee.email,
+      employee_id: safeEmployee.number,
+      role:        safeEmployee.role,
+    },
+  };
 }

@@ -5,13 +5,50 @@ import { mockAssetCategories, mockAssetRequests, mockAssets, mockBeds, mockDashb
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
-  const { getSnConfig } = await import("./servicenow.server");
+  const { getSnConfig, snGetBeds } = await import("./servicenow.server");
   const cfg = getSnConfig();
   if (!cfg) return { source: "mock" as const, ...mockDashboard };
   try {
-    const { snGetBeds } = await import("./servicenow.server");
-    const beds = await snGetBeds(cfg);
-    return { source: "servicenow" as const, ...mockDashboard, raw: { bedsCount: beds.result?.length ?? 0 } };
+    const r = await snGetBeds(cfg);
+    const beds = r.result ?? [];
+
+    const total      = beds.length;
+    const available  = beds.filter((b) => b.status?.toLowerCase() === "available").length;
+    const occupied   = beds.filter((b) => b.status?.toLowerCase() === "occupied").length;
+    const maintenance= beds.filter((b) => b.status?.toLowerCase() === "maintenance").length;
+    const outOfService = beds.filter((b) => b.status?.toLowerCase() === "out_of_service" || b.status?.toLowerCase() === "blocked").length;
+
+    // Group by ward/bed_type for department breakdown
+    const deptMap: Record<string, number> = {};
+    for (const b of beds) {
+      const dept = b.ward || b.bed_type || "Other";
+      deptMap[dept] = (deptMap[dept] ?? 0) + 1;
+    }
+    const colors = ["#3b82f6", "#14b8a6", "#f59e0b", "#8b5cf6", "#ef4444", "#22c55e"];
+    const bedsByDepartment = Object.entries(deptMap).map(([name, value], i) => ({
+      name, value, color: colors[i % colors.length],
+    }));
+
+    return {
+      source: "servicenow" as const,
+      totals: {
+        totalBeds: total,
+        availableBeds: available,
+        occupiedBeds: occupied,
+        maintenance,
+        outOfService,
+        totalEquipment: mockDashboard.totals.totalEquipment,
+        activeStaff: mockDashboard.totals.activeStaff,
+        icuAvailable: beds.filter((b) => (b.ward ?? b.bed_type ?? "").toLowerCase().includes("icu") && b.status?.toLowerCase() === "available").length,
+        icuTotal: beds.filter((b) => (b.ward ?? b.bed_type ?? "").toLowerCase().includes("icu")).length,
+        equipmentOnline: mockDashboard.totals.equipmentOnline,
+        equipmentTotal: mockDashboard.totals.equipmentTotal,
+      },
+      occupancyTrend: mockDashboard.occupancyTrend,
+      bedsByDepartment,
+      recentRequests: mockDashboard.recentRequests,
+      admissionTrend: mockDashboard.admissionTrend,
+    };
   } catch (e) {
     return { source: "mock" as const, error: (e as Error).message, ...mockDashboard };
   }
@@ -19,15 +56,31 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
 
 // ─── Beds ─────────────────────────────────────────────────────────────────────
 export const getBeds = createServerFn({ method: "GET" }).handler(async () => {
-  const { getSnConfig } = await import("./servicenow.server");
+  const { getSnConfig, snGetBeds } = await import("./servicenow.server");
   const cfg = getSnConfig();
   if (!cfg) return { source: "mock" as const, beds: mockBeds };
   try {
-    const { snGetBeds } = await import("./servicenow.server");
     const r = await snGetBeds(cfg);
-    return { source: "servicenow" as const, beds: r.result ?? [] };
-  } catch {
-    return { source: "mock" as const, beds: mockBeds };
+    // Map ServiceNow bed_inventory fields to the Bed type used in the UI
+    const beds = (r.result ?? []).map((row) => ({
+      id:               row.sys_id,
+      ward:             row.ward || row.bed_type || "General",
+      number:           row.bed_number || row.number || row.sys_id,
+      status:           (row.status?.toLowerCase().replace(/ /g, "_") || "available") as import("./mock-data").BedStatus,
+      patient:          row.patient_name || undefined,
+      patientId:        row.patient_id || undefined,
+      age:              row.age ? parseInt(row.age) : undefined,
+      gender:           (row.gender === "Male" || row.gender === "M") ? "M" as const : row.gender ? "F" as const : undefined,
+      admittedOn:       row.admitted_on || undefined,
+      diagnosis:        row.diagnosis || undefined,
+      doctor:           row.doctor || undefined,
+      expectedDischarge:row.expected_discharge || undefined,
+      bedType:          row.bed_type || undefined,
+      ratePerDay:       row.rate_per_day ? parseInt(row.rate_per_day) : undefined,
+    }));
+    return { source: "servicenow" as const, beds };
+  } catch (e) {
+    return { source: "mock" as const, beds: mockBeds, error: (e as Error).message };
   }
 });
 
@@ -308,3 +361,36 @@ export const getAiAnalysis = createServerFn({ method: "GET" }).handler(async () 
 // Some local versions of admissions.tsx import updateConditionNotes instead of
 // updatePatientCondition — this alias ensures both names work.
 export const updateConditionNotes = updatePatientCondition;
+
+// ─── Employee Login ───────────────────────────────────────────────────────────
+// Validates employee credentials against ServiceNow employee table.
+export const authenticateEmployee = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({
+      employeeId: z.string().min(1, "Employee ID is required"),
+      password:   z.string().min(1, "Password is required"),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { getSnConfig, snAuthenticateEmployee } = await import("./servicenow.server");
+    const cfg = getSnConfig();
+
+    // No ServiceNow config — allow demo login
+    if (!cfg) {
+      if (data.employeeId === "EMPL1001" && data.password === "demo123") {
+        return {
+          ok: true,
+          source: "mock" as const,
+          employee: { sys_id: "mock-1", name: "Demo User", email: "demo@hospitalcare.io", employee_id: "EMPL1001", role: "nurse" },
+        };
+      }
+      return { ok: false, source: "mock" as const, error: "Invalid Employee ID or Password" };
+    }
+
+    try {
+      const result = await snAuthenticateEmployee(cfg, data.employeeId, data.password);
+      return { ...result, source: "servicenow" as const };
+    } catch (e) {
+      return { ok: false, source: "servicenow" as const, error: (e as Error).message };
+    }
+  });
