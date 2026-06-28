@@ -233,7 +233,7 @@ npm run format
 
 ## Team
 
-Built by **Mani Shankar Udumula**  as part of a college AI-in-Healthcare project.
+Built by **Mani Shankar Udumula** (Balu,nandu,vamsi) as part of a college AI-in-Healthcare project.
 
 ---
 
