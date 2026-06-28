@@ -508,8 +508,8 @@ function AllocateDialog({
     [beds, requirement],
   );
   const targetBed = beds.find((b) => b.id === bedId) ?? null;
-  const targetMismatch = targetBed && targetBed.bedType !== requirement.requires;
-  const targetUnavailable = targetBed && targetBed.status !== "available";
+  const targetMismatch = !!(targetBed && targetBed.bedType !== requirement.requires);
+  const targetUnavailable = !!(targetBed && targetBed.status !== "available");
 
   const isSubmitDisabled =
     isSubmitting || (isLoading ?? false) || targetMismatch || targetUnavailable;

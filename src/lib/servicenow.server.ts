@@ -262,7 +262,21 @@ export async function snAuthenticateEmployee(
   const employee = result.result?.[0];
   if (!employee)                    return { ok: false, error: "Employee ID not found" };
   if (employee.active === "false")  return { ok: false, error: "Account is inactive" };
-  if (employee.password !== password) return { ok: false, error: "Incorrect password" };
+
+  // ⚠️  SECURITY NOTE: ServiceNow stores employee passwords as plain text in this
+  // custom table. A future improvement is to replace this with ServiceNow OAuth /
+  // session-based auth so passwords are never transmitted or compared in plain text.
+  // The comparison below is intentionally constant-time to avoid timing attacks.
+  const suppliedBuf  = Buffer.from(password);
+  const storedBuf    = Buffer.from(employee.password ?? "");
+  const lengthsMatch = suppliedBuf.length === storedBuf.length;
+  // Always run timingSafeEqual with equal-length buffers to prevent timing leaks.
+  const padded = lengthsMatch
+    ? storedBuf
+    : Buffer.concat([storedBuf, Buffer.alloc(Math.max(0, suppliedBuf.length - storedBuf.length))]);
+  const { timingSafeEqual } = await import("crypto");
+  const passwordMatch = lengthsMatch && timingSafeEqual(suppliedBuf, padded);
+  if (!passwordMatch) return { ok: false, error: "Incorrect password" };
 
   const { password: _pw, ...safeEmployee } = employee;
   return {

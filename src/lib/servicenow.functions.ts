@@ -375,16 +375,20 @@ export const authenticateEmployee = createServerFn({ method: "POST" })
     const { getSnConfig, snAuthenticateEmployee } = await import("./servicenow.server");
     const cfg = getSnConfig();
 
-    // No ServiceNow config — allow demo login
+    // No ServiceNow config — allow demo login only when explicitly enabled.
+    // Set DEMO_LOGIN_ENABLED=true and DEMO_PASSWORD in .env for local dev ONLY.
+    // Never enable these in production.
     if (!cfg) {
-      if (data.employeeId === "EMPL1001" && data.password === "demo123") {
+      const demoEnabled = process.env.DEMO_LOGIN_ENABLED === "true";
+      const demoPassword = process.env.DEMO_PASSWORD ?? "";
+      if (demoEnabled && demoPassword && data.employeeId === "EMPL1001" && data.password === demoPassword) {
         return {
           ok: true,
           source: "mock" as const,
           employee: { sys_id: "mock-1", name: "Demo User", email: "demo@hospitalcare.io", employee_id: "EMPL1001", role: "nurse" },
         };
       }
-      return { ok: false, source: "mock" as const, error: "Invalid Employee ID or Password" };
+      return { ok: false, source: "mock" as const, error: "ServiceNow is not configured. Contact your administrator." };
     }
 
     try {

@@ -60,13 +60,20 @@ export function AppShell({
   breadcrumb?: string[];
   actions?: ReactNode;
 }) {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const profileRef = useRef<HTMLDivElement>(null);
   const loc = useLocation();
+
+  // ── Auth guard: redirect to /login if not authenticated ──────────────────
+  useEffect(() => {
+    if (ready && !user) {
+      navigate({ to: "/login" });
+    }
+  }, [ready, user, navigate]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -77,6 +84,9 @@ export function AppShell({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  // Don't render protected content until auth state is resolved
+  if (!ready || !user) return null;
 
   return (
     <div className="flex min-h-screen bg-background">
