@@ -56,7 +56,22 @@ async function snFetch<T = unknown>(
         await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
         continue;
       }
-      if (!res.ok) throw new Error(`ServiceNow ${res.status}: ${await res.text()}`);
+      if (!res.ok) {
+        // Surface ServiceNow's actual error payload (e.g. mandatory field, ACL,
+        // or invalid field name) instead of a generic status code so failures
+        // are visible in the UI toast instead of failing silently.
+        let detail = "";
+        try {
+          const body = await res.json();
+          detail =
+            body?.error?.message ||
+            body?.error?.detail ||
+            JSON.stringify(body);
+        } catch {
+          detail = await res.text().catch(() => "");
+        }
+        throw new Error(`ServiceNow ${res.status} on ${init.method ?? "GET"} ${table}: ${detail}`);
+      }
       return (await res.json()) as T;
     } catch (e) {
       lastErr = e;
@@ -158,8 +173,7 @@ export async function snGetPatientAdmissions(cfg: SNConfig) {
         "phone_number",
         "condition_type",
         "assigned_bed",
-        "nurse_diagnosis",
-        "nurse_notes",
+        "condition_notes",
         "ai_analysis",
         "sys_created_on",
       ].join(","),
@@ -202,19 +216,22 @@ export async function snGetAiPredictions(cfg: SNConfig) {
 }
 
 /**
- * PATCH a single patient admission to record the nurse's post-diagnosis update.
- * The Business Rule / Script Include on the ServiceNow side will detect that
- * nurse_diagnosis is now populated and trigger the AI analysis call, writing
- * the result back into the ai_analysis field.
+ * PATCH a single patient admission to record the nurse's condition notes.
+ * The Business Rule on ServiceNow detects that condition_notes is now
+ * non-blank and triggers the Mistral AI analysis call, writing the result
+ * back into the ai_analysis field.
  *
  * Payload fields:
- *   nurse_diagnosis  – doctor's diagnosis string
- *   nurse_notes      – additional nurse notes / observations
+ *   condition_notes   – diagnosis, vitals, medications, observations
+ *   nurse_submitted_by – (optional) sys_id of the logged-in nurse/employee.
+ *     Some ServiceNow instances have this as a mandatory reference field on
+ *     the form; pass it whenever the caller knows the logged-in user's sys_id
+ *     so the PATCH doesn't fail validation on instances that enforce it.
  */
 export async function snUpdatePatientCondition(
   cfg: SNConfig,
   sysId: string,
-  body: { nurse_diagnosis: string; nurse_notes?: string },
+  body: { condition_notes: string; nurse_submitted_by?: string },
 ) {
   return snFetch<{ result: SNRow }>(cfg, "x_1811536_hospit_0_patient_admission", {
     method: "PATCH",

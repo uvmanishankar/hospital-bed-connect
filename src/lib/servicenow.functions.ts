@@ -201,7 +201,12 @@ export const createPatientAdmission = createServerFn({ method: "POST" })
     };
     if (data.bloodGroup)         payload.blood_group        = data.bloodGroup;
     if (data.emergencyContact)   payload.emergency_contact  = data.emergencyContact;
-    if (data.referredBy)         payload.condition_notes    = data.referredBy;
+    // NOTE: "Referred By" has no dedicated ServiceNow field yet. It is intentionally
+    // NOT written to condition_notes anymore — that field is reserved for the nurse's
+    // post-examination notes, which trigger the Mistral AI Business Rule. Writing
+    // referredBy there would either (a) get silently overwritten by the nurse's real
+    // notes, or (b) falsely trigger AI analysis on admission with referral data.
+    // TODO: add a `referred_by` field to x_1811536_hospit_0_patient_admission in ServiceNow.
     if (data.insuranceAadhaarId) payload.insurance_aadhaar  = data.insuranceAadhaarId;
     if (data.address)            payload.address             = data.address;
     if (data.conditionType)      payload.condition_type      = data.conditionType;
@@ -231,8 +236,7 @@ export const getPatientAdmissions = createServerFn({ method: "GET" }).handler(as
           phone_number: "+91 98765 43210",
           condition_type: "Emergency",
           assigned_bed: "ICU-2A",
-          nurse_diagnosis: "",
-          nurse_notes: "",
+          condition_notes: "",
           ai_analysis: "",
           sys_created_on: new Date(Date.now() - 10 * 60000).toISOString(),
         },
@@ -245,8 +249,7 @@ export const getPatientAdmissions = createServerFn({ method: "GET" }).handler(as
           phone_number: "+91 98765 11111",
           condition_type: "General",
           assigned_bed: "GW-05",
-          nurse_diagnosis: "Hypertension with mild oedema",
-          nurse_notes: "BP monitored every 2h",
+          condition_notes: "Hypertension with mild oedema. BP monitored every 2h.",
           ai_analysis: "Estimated bed occupancy: 4–5 days. Recommend daily BP monitoring and low-sodium diet. Discharge likely by Day 5 if BP stabilises.",
           sys_created_on: new Date(Date.now() - 80 * 60000).toISOString(),
         },
@@ -259,8 +262,7 @@ export const getPatientAdmissions = createServerFn({ method: "GET" }).handler(as
           phone_number: "+91 77777 88888",
           condition_type: "Paediatric",
           assigned_bed: "PED-03",
-          nurse_diagnosis: "",
-          nurse_notes: "",
+          condition_notes: "",
           ai_analysis: "",
           sys_created_on: new Date(Date.now() - 2 * 3600000).toISOString(),
         },
@@ -276,15 +278,15 @@ export const getPatientAdmissions = createServerFn({ method: "GET" }).handler(as
 });
 
 // ─── Patient Admission — nurse condition update ───────────────────────────────
-// PATCHes nurse_diagnosis + nurse_notes onto the record.
-// The ServiceNow Business Rule / Script Include detects this and calls the AI,
-// writing the result back into ai_analysis on the same record.
+// PATCHes condition_notes onto the record. The ServiceNow Business Rule detects
+// condition_notes becoming non-blank and calls the AI, writing the result back
+// into the ai_analysis field on the same record.
 export const updatePatientCondition = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
-      sysId:          z.string().min(1, "Record sys_id is required"),
-      nurseDiagnosis: z.string().min(1, "Diagnosis is required"),
-      nurseNotes:     z.string().optional(),
+      sysId:           z.string().min(1, "Record sys_id is required"),
+      conditionNotes:  z.string().min(1, "Condition notes are required"),
+      nurseSubmittedBy: z.string().optional(),
     }).parse(d),
   )
   .handler(async ({ data }) => {
@@ -296,13 +298,14 @@ export const updatePatientCondition = createServerFn({ method: "POST" })
         ok: true,
         source: "mock" as const,
         sysId: data.sysId,
-        nurseDiagnosis: data.nurseDiagnosis,
-        nurseNotes: data.nurseNotes ?? "",
+        conditionNotes: data.conditionNotes,
       };
     }
+    // Let errors propagate (do NOT swallow them) so the frontend's onError
+    // handler can show the real ServiceNow failure reason in the toast.
     const r = await snUpdatePatientCondition(cfg, data.sysId, {
-      nurse_diagnosis: data.nurseDiagnosis,
-      nurse_notes:     data.nurseNotes ?? "",
+      condition_notes: data.conditionNotes,
+      ...(data.nurseSubmittedBy ? { nurse_submitted_by: data.nurseSubmittedBy } : {}),
     });
     return { ok: true, source: "servicenow" as const, sysId: data.sysId, data: r };
   });
